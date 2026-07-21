@@ -1,5 +1,4 @@
 // Prisma schema — personal PWA (notes, tracker, push notifications)
-// Single-user app: no accounts/registration, so there is no User model.
 // https://pris.ly/d/prisma-schema
 
 generator client {
@@ -9,6 +8,14 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// Accounts are created by the owner (script), not via public signup.
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
 }
 
 model Note {

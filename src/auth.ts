@@ -1,16 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { timingSafeEqual } from "node:crypto";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
 
 // ~10 years — effectively "never expires" for a personal single-user app.
 const SESSION_MAX_AGE = 60 * 60 * 24 * 365 * 10;
-
-function safeEqual(a: string, b: string) {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -19,17 +13,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         username: { label: "Usuario", type: "text" },
         password: { label: "Contraseña", type: "password" },
       },
-      authorize(credentials) {
+      async authorize(credentials) {
         const username = String(credentials?.username ?? "");
         const password = String(credentials?.password ?? "");
-        const validUser = process.env.APP_USERNAME ?? "";
-        const validPass = process.env.APP_PASSWORD ?? "";
+        if (!username || !password) return null;
 
-        if (!validUser || !validPass) return null;
-        if (safeEqual(username, validUser) && safeEqual(password, validPass)) {
-          return { id: "owner", name: validUser };
-        }
-        return null;
+        const user = await prisma.user.findUnique({ where: { username } });
+        if (!user) return null;
+
+        const valid = await bcrypt.compare(password, user.passwordHash);
+        if (!valid) return null;
+
+        return { id: user.id, name: user.username };
       },
     }),
   ],
