@@ -1,15 +1,13 @@
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createNote, signOutAction } from "@/app/actions";
 import { NotesList } from "@/components/notes-list";
 import { PushManager } from "@/components/push-manager";
 
-export default async function Home() {
-  const session = await auth();
-  const userId = session!.user!.id!;
+// Behind login and reads live data — never prerender/cache this page.
+export const dynamic = "force-dynamic";
 
+export default async function Home() {
   const notes = await prisma.note.findMany({
-    where: { userId },
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     select: { id: true, title: true, pinned: true, createdAt: true },
   });

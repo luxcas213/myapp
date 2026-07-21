@@ -3,16 +3,14 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { webpush } from "@/lib/push";
 
-// Sends a test push notification to every device the current user has subscribed.
+// Sends a test push notification to every device subscribed (single-user app).
 export async function POST() {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const subs = await prisma.pushSubscription.findMany({
-    where: { userId: session.user.id },
-  });
+  const subs = await prisma.pushSubscription.findMany();
 
   const payload = JSON.stringify({
     title: "Mi App",

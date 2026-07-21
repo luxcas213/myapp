@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -16,7 +16,6 @@ export async function POST(req: NextRequest) {
   await prisma.pushSubscription.upsert({
     where: { endpoint: sub.endpoint },
     create: {
-      userId: session.user.id,
       endpoint: sub.endpoint,
       p256dh: sub.keys.p256dh,
       auth: sub.keys.auth,
@@ -32,14 +31,12 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { endpoint } = (await req.json()) as { endpoint: string };
-  await prisma.pushSubscription.deleteMany({
-    where: { endpoint, userId: session.user.id },
-  });
+  await prisma.pushSubscription.deleteMany({ where: { endpoint } });
 
   return NextResponse.json({ ok: true });
 }

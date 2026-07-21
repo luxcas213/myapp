@@ -1,18 +1,19 @@
 # Mi App
 
-PWA personal (Next.js + Prisma + Vercel Postgres) instalable en iOS Safari, con login de Google, notas y notificaciones push. Pensada para un solo usuario (vos).
+PWA personal (Next.js + Prisma + Vercel Postgres) instalable en iOS Safari, con login simple de usuario/contraseña, notas y notificaciones push. Pensada para un solo usuario (vos) — sin registro, sin OAuth.
 
 ## Stack
 
 - Next.js 16 (App Router), React 19, TypeScript, Tailwind v4
-- Auth.js v5 (Google OAuth, sesiones en base de datos)
+- Auth.js v5 — provider `Credentials` (usuario/contraseña fijos por env var), sesión JWT de larga duración (~10 años, no expira en la práctica)
 - Prisma 7 + `@prisma/adapter-pg` sobre Vercel Postgres (Neon)
 - Web Push (VAPID) con service worker propio
 - PWA instalable en iOS (manifest + `apple-touch-icon` + `display: standalone`)
 
 ## Modelos (`prisma/schema.prisma`)
 
-- `User`, `Account`, `Session`, `VerificationToken` — requeridos por Auth.js
+App de un solo usuario: no hay tabla de usuarios ni relaciones por `userId`.
+
 - `Note` — feature inicial (título, contenido, pin)
 - `TrackerEntry` — tracker genérico (`kind` + `value`/`data` JSON) para agregar hábitos, gastos, entrenamientos, etc. sin tocar el schema
 - `PushSubscription` — suscripciones de push por dispositivo
@@ -22,7 +23,7 @@ PWA personal (Next.js + Prisma + Vercel Postgres) instalable en iOS Safari, con 
 1. Copiá `.env.example` a `.env` y completá:
    - `DATABASE_URL`: connection string de Postgres (local o ya de Vercel)
    - `AUTH_SECRET`: `npx auth secret` (o `openssl rand -base64 33`)
-   - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`: ver abajo
+   - `APP_USERNAME` / `APP_PASSWORD`: el usuario y contraseña que vas a usar para entrar
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: `npx web-push generate-vapid-keys`
 
 2. Instalar dependencias y generar el cliente Prisma:
@@ -44,23 +45,18 @@ PWA personal (Next.js + Prisma + Vercel Postgres) instalable en iOS Safari, con 
    npm run dev
    ```
 
-## Google OAuth
+## Login
 
-1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → **Create Credentials → OAuth client ID → Web application**.
-2. **Authorized redirect URI**:
-   - Local: `http://localhost:3000/api/auth/callback/google`
-   - Prod: `https://TU-DOMINIO/api/auth/callback/google`
-3. Copiá Client ID / Secret a `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`.
+No hay OAuth ni registro: `src/auth.ts` valida `APP_USERNAME`/`APP_PASSWORD` (env vars) contra lo que se ingresa en `/login`, con comparación a tiempo constante (`timingSafeEqual`) para evitar timing attacks. La sesión es JWT con `maxAge` de ~10 años, así que una vez que entrás no te vuelve a pedir login (salvo que borres la cookie o cambies `AUTH_SECRET`).
 
-Solo vos vas a poder entrar igual (no hay flujo de registro/roles), pero si querés restringir por email además del login, se puede agregar un chequeo en el callback `signIn` de `src/auth.ts`.
+Para cambiar usuario/contraseña, solo actualizá las env vars (local: `.env`; producción: Vercel → Settings → Environment Variables) y redeployá/reiniciá.
 
 ## Deploy en Vercel
 
 1. Importá el repo en Vercel (dashboard → Add New → Project).
 2. **Storage → Create Database → Postgres**, conectalo al proyecto. Vercel va a exponer `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, etc. Copiá la que uses como `DATABASE_URL` en las env vars del proyecto (Settings → Environment Variables), o renombrala directamente a `DATABASE_URL`.
-3. Cargá el resto de las env vars (`AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`) en el proyecto de Vercel.
-4. Actualizá el redirect URI de Google OAuth con el dominio real de producción.
-5. Deploy. Corré la migración contra la DB de producción una vez (`npx prisma migrate deploy`, con `DATABASE_URL` de prod en el entorno) o desde tu máquina apuntando a esa connection string.
+3. Cargá el resto de las env vars (`AUTH_SECRET`, `APP_USERNAME`, `APP_PASSWORD`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`) en el proyecto de Vercel.
+4. Deploy. Corré la migración contra la DB de producción una vez (`npx prisma migrate deploy`, con `DATABASE_URL` de prod en el entorno) o desde tu máquina apuntando a esa connection string.
 
 ## Instalar como PWA en iOS
 
@@ -73,5 +69,5 @@ Los íconos generados (`public/icons/*.png`) son placeholders — reemplazalos p
 ## Notificaciones push
 
 - El botón "Activar notificaciones" en la home pide permiso, registra `public/sw.js` y guarda la suscripción en `PushSubscription`.
-- `POST /api/push/send` manda una notificación de prueba a todas las suscripciones del usuario logueado (usalo para probar el flujo end to end).
-- Para push reales desde otras partes de la app, reusá `webpush.sendNotification(...)` de `src/lib/push.ts` con las suscripciones del usuario.
+- `POST /api/push/send` manda una notificación de prueba a todas las suscripciones guardadas (usalo para probar el flujo end to end).
+- Para push reales desde otras partes de la app, reusá `webpush.sendNotification(...)` de `src/lib/push.ts` con las filas de `PushSubscription`.

@@ -1,4 +1,5 @@
 // Prisma schema — personal PWA (notes, tracker, push notifications)
+// Single-user app: no accounts/registration, so there is no User model.
 // https://pris.ly/d/prisma-schema
 
 generator client {
@@ -10,78 +11,19 @@ datasource db {
   provider = "postgresql"
 }
 
-// --- Auth.js required models ---
-
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-
-  accounts          Account[]
-  sessions          Session[]
-  notes             Note[]
-  trackerEntries    TrackerEntry[]
-  pushSubscriptions PushSubscription[]
-
-  createdAt DateTime @default(now())
-}
-
-model Account {
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([provider, providerAccountId])
-}
-
-model Session {
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@id([identifier, token])
-}
-
-// --- App models ---
-
 model Note {
   id        String   @id @default(cuid())
-  userId    String
   title     String
   content   String   @default("")
   pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
 
 // Generic personal tracker entry. `kind` groups entries (e.g. "mood", "workout", "expense")
 // and `data` holds kind-specific fields as JSON so new trackers don't need schema changes.
 model TrackerEntry {
   id         String   @id @default(cuid())
-  userId     String
   kind       String
   value      Float?
   note       String?
@@ -89,20 +31,13 @@ model TrackerEntry {
   occurredAt DateTime @default(now())
   createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, kind])
+  @@index([kind])
 }
 
 model PushSubscription {
   id        String   @id @default(cuid())
-  userId    String
   endpoint  String   @unique
   p256dh    String
   auth      String
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
