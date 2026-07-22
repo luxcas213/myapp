@@ -48,3 +48,69 @@ model PushSubscription {
   auth      String
   createdAt DateTime @default(now())
 }
+
+enum TrackingType {
+  SIMPLE
+  LOGGED
+}
+
+// A reminder/to-do item. One-off (dueDate set, recurrence null) or recurring
+// (recurrence set, dueDate null). `recurrence` is a small JSON descriptor —
+// e.g. {"type":"DAILY"} | {"type":"WEEKDAYS","days":[1,3,5]} |
+// {"type":"INTERVAL","unit":"DAY","n":3} | {"type":"MONTHLY","day":5} |
+// {"type":"YEARLY","month":3,"day":15} — matched by a pure function in
+// application code, not queried at the DB level (personal-app data volume).
+model Task {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  trackingType TrackingType @default(SIMPLE)
+  dueDate      DateTime?
+  recurrence   Json?
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tags          Tag[]
+  notifications TaskNotification[]
+  completions   TaskCompletion[]
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+  tasks Task[]
+}
+
+// One alert config per Task; a Task can have several. `timeOfDay` (minutes
+// since midnight) drives recurring tasks, `sendAt` drives one-off tasks.
+// `lastFiredForDate` is the dedupe guard so a sweep that runs every few
+// minutes doesn't resend the same day's alert twice.
+model TaskNotification {
+  id                  String    @id @default(cuid())
+  taskId              String
+  task                Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  requireConfirmation Boolean   @default(false)
+  timeOfDay           Int?
+  sendAt              DateTime?
+  lastFiredForDate    DateTime? @db.Date
+  createdAt           DateTime  @default(now())
+
+  @@index([taskId])
+}
+
+// A logged completion of one occurrence of a Task. For SIMPLE tasks this is
+// just the done-marker for that date; for LOGGED tasks it also carries the
+// optional note/value (same shape as TrackerEntry, scoped to a task instead
+// of a freeform `kind`). One row per task per occurrence date.
+model TaskCompletion {
+  id          String   @id @default(cuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  forDate     DateTime @db.Date
+  completedAt DateTime @default(now())
+  note        String?
+  value       Float?
+
+  @@unique([taskId, forDate])
+}
