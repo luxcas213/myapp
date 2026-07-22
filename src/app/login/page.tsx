@@ -37,7 +37,7 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 p-6">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <Card className="w-full max-w-xs">
         <CardHeader className="items-center text-center">
           <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-foreground/10">
