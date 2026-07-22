@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { createNote, signOutAction } from "@/app/actions";
+import { createNote } from "@/app/actions";
 import { NotesList } from "@/components/notes-list";
-import { PushManager } from "@/components/push-manager";
+import { SignOutButton } from "@/components/sign-out-button";
 
 // Behind login and reads live data — never prerender/cache this page.
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function NotasPage() {
   const notes = await prisma.note.findMany({
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     select: { id: true, title: true, pinned: true, createdAt: true },
@@ -15,19 +15,12 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
       <header className="flex items-center justify-between border-b border-black/10 px-4 py-4 dark:border-white/10">
-        <h1 className="text-lg font-semibold">Mi App</h1>
-        <form action={signOutAction}>
-          <button className="text-xs text-zinc-500 dark:text-zinc-400">
-            Salir
-          </button>
-        </form>
+        <h1 className="text-lg font-semibold">Notas</h1>
+        <SignOutButton />
       </header>
 
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-6">
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            Notas
-          </h2>
           <form action={createNote} className="flex gap-2">
             <input
               name="title"
@@ -44,8 +37,6 @@ export default async function Home() {
           </form>
           <NotesList notes={notes} />
         </section>
-
-        <PushManager />
       </main>
     </div>
   );
