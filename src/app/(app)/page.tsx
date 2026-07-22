@@ -1,12 +1,10 @@
-import Link from "next/link";
 import { isSameDay } from "date-fns";
-import { ListTodo, NotebookPen } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
 import { SignOutButton } from "@/components/sign-out-button";
 import { PushManager } from "@/components/push-manager";
 import { getActiveTasks } from "@/lib/tasks";
 import { dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
 import { TaskList, type ListedTask } from "./recordatorios/task-list";
+import { QuickActions } from "./quick-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,29 +36,14 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
+    <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-black/10 px-4 py-4 dark:border-white/10">
         <h1 className="text-lg font-semibold">Mi App</h1>
         <SignOutButton />
       </header>
 
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-6">
-        <div className="grid grid-cols-2 gap-3">
-          <Link
-            href="/recordatorios/nueva"
-            className={buttonVariants({ variant: "outline", className: "h-auto flex-col gap-2 py-4" })}
-          >
-            <ListTodo className="size-5" />
-            Nuevo recordatorio
-          </Link>
-          <Link
-            href="/notas"
-            className={buttonVariants({ variant: "outline", className: "h-auto flex-col gap-2 py-4" })}
-          >
-            <NotebookPen className="size-5" />
-            Nueva nota
-          </Link>
-        </div>
+        <QuickActions />
 
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-muted-foreground">Hoy</h2>

@@ -6,7 +6,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-h-dvh flex-col pt-[env(safe-area-inset-top)] pb-[calc(4rem+env(safe-area-inset-bottom))]">
+    <div className="flex min-h-dvh flex-col bg-zinc-50 pt-[env(safe-area-inset-top)] pb-16 dark:bg-black">
       {children}
       <NavBar />
     </div>

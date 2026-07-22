@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Check, Flame, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { completeTask, uncompleteTask, deleteTask } from "./actions";
 import { computeStreak, dateKey, type Recurrence } from "@/lib/recurrence";
 
@@ -30,32 +33,62 @@ function TaskRow({ task, todayKey }: { task: ListedTask; todayKey: string }) {
         await uncompleteTask(task.id, todayKey);
       } else {
         await completeTask(task.id, todayKey);
+        toast.success("¡Listo!", { description: task.title });
       }
     });
   }
 
   function remove() {
-    startTransition(() => deleteTask(task.id));
+    startTransition(async () => {
+      await deleteTask(task.id);
+      toast("Recordatorio eliminado", { description: task.title });
+    });
   }
 
   return (
-    <li className="flex items-center gap-3 rounded-lg border border-black/10 px-4 py-3 dark:border-white/10">
-      <button
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.18 }}
+      className="flex items-center gap-3 rounded-lg border border-black/10 bg-white px-4 py-3 dark:border-white/10 dark:bg-zinc-900"
+    >
+      <motion.button
+        whileTap={{ scale: 0.85 }}
         aria-label={task.doneToday ? "Marcar no hecho" : "Marcar hecho"}
+        aria-pressed={task.doneToday}
         disabled={isPending}
         onClick={toggle}
         className={
-          "flex size-6 shrink-0 items-center justify-center rounded-full border " +
+          "flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors " +
           (task.doneToday
             ? "border-foreground bg-foreground text-background"
             : "border-black/20 dark:border-white/20")
         }
       >
-        {task.doneToday && <Check className="size-4" />}
-      </button>
+        <AnimatePresence>
+          {task.doneToday && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 25 }}
+            >
+              <Check className="size-4" />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.button>
 
-      <div className="flex-1">
-        <p className={task.doneToday ? "text-sm line-through opacity-50" : "text-sm"}>
+      <div className="min-w-0 flex-1">
+        <p
+          className={
+            task.doneToday
+              ? "truncate text-sm line-through opacity-50"
+              : "truncate text-sm"
+          }
+        >
           {task.title}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -73,13 +106,23 @@ function TaskRow({ task, todayKey }: { task: ListedTask; todayKey: string }) {
         </div>
       </div>
 
-      <Link href={`/recordatorios/${task.id}/editar`} aria-label="Editar">
+      <Link
+        href={`/recordatorios/${task.id}/editar`}
+        aria-label="Editar"
+        className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+      >
         <Pencil className="size-4 text-zinc-400" />
       </Link>
-      <button aria-label="Eliminar" disabled={isPending} onClick={remove}>
-        <Trash2 className="size-4 text-zinc-400 hover:text-red-500" />
-      </button>
-    </li>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Eliminar"
+        disabled={isPending}
+        onClick={remove}
+      >
+        <Trash2 className="size-4 text-zinc-400 hover:text-destructive" />
+      </Button>
+    </motion.li>
   );
 }
 
@@ -97,9 +140,11 @@ function TaskGroup({
     <div className="flex flex-col gap-2">
       <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>
       <ul className="flex flex-col gap-2">
-        {tasks.map((t) => (
-          <TaskRow key={t.id} task={t} todayKey={todayKey} />
-        ))}
+        <AnimatePresence initial={false}>
+          {tasks.map((t) => (
+            <TaskRow key={t.id} task={t} todayKey={todayKey} />
+          ))}
+        </AnimatePresence>
       </ul>
     </div>
   );
@@ -118,7 +163,7 @@ export function TaskList({
 
   if (hoy.length === 0 && proximas.length === 0 && sinFecha.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="py-8 text-center text-sm text-muted-foreground">
         No hay recordatorios activos todavía.
       </p>
     );

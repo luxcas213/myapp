@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -236,94 +237,104 @@ export function TaskForm({
           </SelectContent>
         </Select>
 
-        {recurrenceType === "NONE" && (
-          <Input
-            type="date"
-            name="dueDate"
-            defaultValue={
-              task?.dueDate
-                ? new Date(task.dueDate).toISOString().slice(0, 10)
-                : ""
-            }
-          />
-        )}
-
-        {recurrenceType === "WEEKDAYS" && (
-          <ToggleGroup
-            multiple
-            value={weekdays}
-            onValueChange={(value) => setWeekdays(value)}
-            className="justify-start"
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={recurrenceType}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
           >
-            {WEEKDAY_LABELS.map((label, i) => (
-              <ToggleGroupItem key={i} value={String(i)} aria-label={label}>
-                {label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        )}
+            {recurrenceType === "NONE" && (
+              <Input
+                type="date"
+                name="dueDate"
+                defaultValue={
+                  task?.dueDate
+                    ? new Date(task.dueDate).toISOString().slice(0, 10)
+                    : ""
+                }
+              />
+            )}
 
-        {recurrenceType === "INTERVAL" && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Cada</span>
-            <Input
-              type="number"
-              min={1}
-              className="w-16"
-              value={intervalN}
-              onChange={(e) => setIntervalN(Number(e.target.value))}
-            />
-            <Select
-              value={intervalUnit}
-              onValueChange={(v) => setIntervalUnit(v as "DAY" | "WEEK")}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DAY">días</SelectItem>
-                <SelectItem value="WEEK">semanas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+            {recurrenceType === "WEEKDAYS" && (
+              <ToggleGroup
+                multiple
+                value={weekdays}
+                onValueChange={(value) => setWeekdays(value)}
+                className="justify-start"
+              >
+                {WEEKDAY_LABELS.map((label, i) => (
+                  <ToggleGroupItem key={i} value={String(i)} aria-label={label}>
+                    {label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            )}
 
-        {recurrenceType === "MONTHLY" && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Día del mes</span>
-            <Input
-              type="number"
-              min={1}
-              max={31}
-              className="w-20"
-              value={monthlyDay}
-              onChange={(e) => setMonthlyDay(Number(e.target.value))}
-            />
-          </div>
-        )}
+            {recurrenceType === "INTERVAL" && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Cada</span>
+                <Input
+                  type="number"
+                  min={1}
+                  className="w-16"
+                  value={intervalN}
+                  onChange={(e) => setIntervalN(Number(e.target.value))}
+                />
+                <Select
+                  value={intervalUnit}
+                  onValueChange={(v) => setIntervalUnit(v as "DAY" | "WEEK")}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DAY">días</SelectItem>
+                    <SelectItem value="WEEK">semanas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-        {recurrenceType === "YEARLY" && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Mes</span>
-            <Input
-              type="number"
-              min={1}
-              max={12}
-              className="w-16"
-              value={yearlyMonth}
-              onChange={(e) => setYearlyMonth(Number(e.target.value))}
-            />
-            <span className="text-sm">Día</span>
-            <Input
-              type="number"
-              min={1}
-              max={31}
-              className="w-16"
-              value={yearlyDay}
-              onChange={(e) => setYearlyDay(Number(e.target.value))}
-            />
-          </div>
-        )}
+            {recurrenceType === "MONTHLY" && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Día del mes</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  className="w-20"
+                  value={monthlyDay}
+                  onChange={(e) => setMonthlyDay(Number(e.target.value))}
+                />
+              </div>
+            )}
+
+            {recurrenceType === "YEARLY" && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Mes</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={12}
+                  className="w-16"
+                  value={yearlyMonth}
+                  onChange={(e) => setYearlyMonth(Number(e.target.value))}
+                />
+                <span className="text-sm">Día</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={31}
+                  className="w-16"
+                  value={yearlyDay}
+                  onChange={(e) => setYearlyDay(Number(e.target.value))}
+                />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -340,36 +351,45 @@ export function TaskForm({
           </p>
         )}
 
-        {notifications.map((n) => (
-          <div
-            key={n.key}
-            className="flex items-center gap-3 rounded-lg border border-black/10 p-3 dark:border-white/10"
-          >
-            <Input
-              type={recurrenceType === "NONE" ? "datetime-local" : "time"}
-              value={n.time}
-              onChange={(e) => updateNotification(n.key, { time: e.target.value })}
-              className="flex-1"
-            />
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={n.requireConfirmation}
-                onCheckedChange={(checked) =>
-                  updateNotification(n.key, { requireConfirmation: checked })
-                }
-              />
-              <span className="text-xs text-muted-foreground">Confirmar</span>
-            </div>
-            <button
-              type="button"
-              aria-label="Eliminar aviso"
-              onClick={() => removeNotification(n.key)}
-              className="text-zinc-400 hover:text-red-500"
+        <AnimatePresence initial={false}>
+          {notifications.map((n) => (
+            <motion.div
+              key={n.key}
+              layout
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
             >
-              <Trash2 className="size-4" />
-            </button>
-          </div>
-        ))}
+              <div className="flex items-center gap-3 rounded-lg border border-black/10 p-3 dark:border-white/10">
+                <Input
+                  type={recurrenceType === "NONE" ? "datetime-local" : "time"}
+                  value={n.time}
+                  onChange={(e) => updateNotification(n.key, { time: e.target.value })}
+                  className="flex-1"
+                />
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={n.requireConfirmation}
+                    onCheckedChange={(checked) =>
+                      updateNotification(n.key, { requireConfirmation: checked })
+                    }
+                  />
+                  <span className="text-xs text-muted-foreground">Confirmar</span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Eliminar aviso"
+                  onClick={() => removeNotification(n.key)}
+                  className="text-zinc-400 hover:text-red-500"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       <Button type="submit" disabled={isPending} className="mt-2">
