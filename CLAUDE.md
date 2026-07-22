@@ -11,10 +11,12 @@ username/password, with accounts created by the owner via a CLI script (see
 "No User model" below — this changed from a single hardcoded credential pair
 to a real `User` table on 2026-07-21).
 
-Planned scope (in order): starter template first (done) → notes (done) →
-generic personal tracker (habits/expenses/workouts/etc., schema exists, UI
-pending) → push notifications (plumbing done, real reminders pending). The
-repo right now is a working template/skeleton, not a finished feature set.
+Planned scope (in order): starter template (done) → notes (done) →
+**Recordatorios/reminders with real push notifications (done, 2026-07-22)**
+→ financial management (expenses/income/subscriptions, not started) → home
+redesign once both exist → habits/health later if wanted. The owner
+explicitly does not want gamification (XP/levels/points) anywhere — see the
+Recordatorios section below for why that was considered and rejected.
 
 ## Architecture decisions (already made, don't re-litigate without reason)
 
@@ -100,29 +102,33 @@ Done:
   username/password; don't put real credentials in this file or in git.
 - `AUTH_SECRET` and VAPID keys are generated and set as Vercel env vars
   (production/preview/development) — no longer placeholders.
-- Notes CRUD (first feature) on the home page (`src/app/page.tsx`,
-  `src/app/actions.ts`, `src/components/notes-list.tsx`)
+- Notes CRUD on `src/app/(app)/notas/page.tsx` (moved out of the root page
+  when the nav bar was added, see Recordatorios section below —
+  `src/app/actions.ts`, `src/components/notes-list.tsx` unchanged)
 - PWA manifest + icons (placeholders — regenerate real ones when you have
   branding) + iOS meta tags in `src/app/layout.tsx`
 - Push notification plumbing: `public/sw.js`, `/api/push/subscribe`,
-  `/api/push/send` (sends a test push to every stored subscription — no
-  per-user filtering needed anymore), client component
-  `src/components/push-manager.tsx`
+  `/api/push/send` (manual test push to every stored subscription), client
+  component `src/components/push-manager.tsx` (now rendered on Home, see
+  below) — **now actually used for real reminders**, not just plumbing
+- **Recordatorios (reminders/to-do) + Progress — full feature, see its own
+  section below**
 - `postinstall: prisma generate` in `package.json` — **required** because
   `src/generated/prisma` is gitignored (it's generated code); without this
   script a fresh clone (e.g. Vercel's build) fails looking for that module
+- **`prisma migrate deploy` is now wired into the build**
+  (`package.json`'s `build` script is `prisma migrate deploy && next
+  build`, fixed 2026-07-22) — future schema changes apply automatically on
+  deploy, no more manual workaround needed for that step specifically (the
+  workaround is still needed to get a migration applied *from this cloud
+  session* before it ships, see the TCP-vs-HTTPS gotcha below).
 
 Not done yet:
-- Tracker UI (the `TrackerEntry` model exists in the schema but has no
-  pages/actions yet — it's intentionally generic: `kind` + `value`/`data`
-  JSON so new tracker types don't need schema migrations)
-- **`prisma migrate deploy` is not wired into the build** (`package.json`'s
-  `build` script is still plain `next build`, no `vercel.json` running
-  migrations first). Right now the DB schema matches the code because the
-  first migration was applied by hand from the cloud session (see gotcha
-  below). The next schema change **will not auto-apply** on deploy unless
-  this gets fixed — add `prisma migrate deploy && next build` (or similar)
-  to the build step before shipping another schema change.
+- Tracker UI beyond Recordatorios (the generic `TrackerEntry` model still
+  has no pages/actions of its own — habits/health tracking would use it,
+  not started, no fixed date)
+- Financial management (expenses/income/subscriptions) — next planned
+  feature after Recordatorios, see "What this is" above
 - `.env.example` still lists `APP_USERNAME`/`APP_PASSWORD` as if they
   control login — they don't anymore (dead since the multi-user auth
   rewrite). Should be replaced with a note pointing at
@@ -130,10 +136,6 @@ Not done yet:
 - The timing side-channel and the `create-user.ts` rough edges noted above
   (missing dotenv load, no `.catch()`, pool not closed) are known,
   unfixed, low-to-medium priority.
-- No `vercel.json` — not needed for a standard Next.js app (Vercel
-  auto-detects framework/build/output). Only add one if you need something
-  auto-detect doesn't cover — e.g. **Vercel Cron** for scheduled push
-  reminders, custom headers, or pinning function regions
 
 ## Resolved: Vercel CLI/API network access from the cloud session
 
@@ -173,13 +175,19 @@ was blocked by this environment's safety classifier as a sensitive action
 (it mints a standing URL that can trigger production deploys) — get
 explicit human approval before creating one.
 
-In practice, on 2026-07-21 a push to `main` authored by `Claude
-<noreply@anthropic.com>` deployed successfully without being blocked —
-inconsistent with the restriction above; the exact trigger condition isn't
-fully understood. Don't assume future pushes will always go through;
-verify with `vercel inspect <production-url>` (check `readyState` and
-which deployment the alias resolves to) after pushing, don't just assume
-success.
+In practice this is **inconsistent, not rare**: across 2026-07-21 and
+2026-07-22, some pushes/CLI deploys from the cloud session went through
+fine and others (including two in a row on 2026-07-22, both a plain `vercel
+deploy --prod` with no git push involved) got BLOCKED with the identical
+reason. The exact trigger condition still isn't understood — don't assume
+a deploy went live just because the command exited 0. **Always verify**
+with `vercel inspect <production-url>` (check which deployment ID the
+alias currently resolves to, and that specific deployment's `readyState`
+via `vercel api /v13/deployments/<id>`) after every deploy. When a deploy
+is BLOCKED, the currently-live one is simply left as-is (not automatically
+retried) — if the blocked deploy contained an important fix (e.g. a
+rotated secret), retry `vercel deploy --prod` again; it may or may not go
+through next time.
 
 ## Env vars needed (see `.env.example` — currently stale, see below)
 
@@ -210,13 +218,15 @@ dev, or a new Vercel project):
 - **Prisma 7 requires a driver adapter**, connection URL lives in
   `prisma.config.ts`, not in `schema.prisma`'s `datasource` block. Client
   instantiation must pass `{ adapter }` — see `src/lib/prisma.ts`.
-- **`src/app/page.tsx` needs `export const dynamic = "force-dynamic"`.**
-  Once it stopped calling `auth()` directly (no more `userId` to read),
-  Next.js lost its signal that the page is dynamic and tried to prerender
-  it at build time — which fails the build if there's no reachable database
-  yet (`Can't reach database server`). The page reads live data and sits
+- **Any page reading live DB data needs `export const dynamic =
+  "force-dynamic"`.** First hit on the original `src/app/page.tsx` (now
+  `src/app/(app)/page.tsx` + `.../notas/page.tsx` + `.../recordatorios/
+  page.tsx`, all of which set it): once a page stops calling `auth()`
+  directly, Next.js loses its signal that the page is dynamic and tries to
+  prerender it at build time, which fails if there's no reachable database
+  yet (`Can't reach database server`). These pages read live data and sit
   behind login anyway, so forcing dynamic rendering is correct, not a
-  workaround to remove later.
+  workaround to remove later — don't forget it on new pages under `(app)/`.
 - **`src/generated/prisma` is gitignored** — always re-run `npx prisma
   generate` after cloning or changing `prisma/schema.prisma`. The
   `postinstall` script in `package.json` normally handles this after
@@ -225,13 +235,103 @@ dev, or a new Vercel project):
   (5432)**, even to the same host, even though the same proxy tunnels
   `api.vercel.com` traffic fine. `prisma migrate dev`/`deploy` from this
   environment fails with `P1001: Can't reach database server` even with a
-  correct `DATABASE_URL`. Workaround used once: generate the migration SQL
+  correct `DATABASE_URL`. Workaround: generate the migration SQL
   with `prisma migrate diff --from-empty --to-schema prisma/schema.prisma
   --script` (no DB connection needed for a diff against an empty schema),
   then apply it by hand over HTTP using `@neondatabase/serverless`'s
   `neon()`/`sql.query()` (Neon's HTTP driver, works through the proxy) and
   manually insert the matching `_prisma_migrations` row (id, sha256
   checksum of the script, migration_name) so `prisma migrate deploy` won't
-  try to reapply it later. This is a one-off workaround, not the normal
-  flow — a real `prisma migrate deploy` (e.g. from Vercel's build, or a
-  local machine) is still the correct way to apply future migrations.
+  try to reapply it later. Reused a second time on 2026-07-22 for the
+  Recordatorios migration (that time via `--from-schema <old> --to-schema
+  <new>` instead of `--from-empty`, since tables already existed) — this is
+  the repeatable pattern for any future schema change made from this cloud
+  session, not a one-off. A real `prisma migrate deploy` (e.g. from
+  Vercel's build, or a local machine) is still the correct way to apply
+  future migrations — and as of 2026-07-22 it's wired into the build
+  command, so a normal deploy handles it without the workaround.
+
+## Recordatorios (reminders/to-do) + Progress — 2026-07-22
+
+Full feature, built after a long product-planning conversation (see
+`docs/recordatorios-plan.md` for the product spec this implements). Owner
+explicitly wants **no gamification** (no XP/levels/points) anywhere — a
+Habitica/Finch-style approach was researched and rejected in favor of
+plain streaks + a heatmap + charts.
+
+**Data model** (`prisma/schema.prisma`): `Task` (title, description?,
+`trackingType` SIMPLE|LOGGED, `dueDate?` for one-off tasks, `recurrence`
+as a small JSON descriptor for recurring ones — `{"type":"DAILY"}` |
+`WEEKDAYS` | `INTERVAL` | `MONTHLY` | `YEARLY`, matched by a pure function,
+not queried at the DB level), `Tag` (freeform, created on the fly via
+`connectOrCreate`), `TaskNotification` (a task can have several; each has
+its own `requireConfirmation` switch and either `timeOfDay` — minutes
+since midnight, for recurring — or `sendAt` — absolute datetime, for
+one-off), `TaskCompletion` (one row per task per occurrence date — doubles
+as the done-marker for SIMPLE tasks and the note/value log for LOGGED
+ones, unique on `(taskId, forDate)`). Recurring task occurrences are
+**virtual/computed**, never materialized as rows — only actual
+completions are persisted. `src/lib/recurrence.ts` has the pure
+`isTaskDueOn`/`computeStreak` functions (manually verified against sample
+cases before relying on them elsewhere); `src/lib/tasks.ts` has the
+Prisma query helpers.
+
+**Routes**: a new `src/app/(app)/` route group adds a bottom `NavBar`
+(Home/Recordatorios/Notas) via `(app)/layout.tsx` — this is why the old
+`src/app/page.tsx` no longer exists (Notes moved to
+`(app)/notas/page.tsx` unchanged; Home is now a dashboard showing today's
+due reminders + quick-add buttons + `PushManager`).
+`(app)/recordatorios/page.tsx` has Activos/Progreso/Historial tabs;
+`nueva/` and `[id]/editar/` share one form component
+(`recordatorios/task-form.tsx`) that switches its fields based on the
+chosen recurrence type; `confirmar/[notificationId]/page.tsx` is the
+screen a "requires confirmation" push notification deep-links to.
+
+**Notifications — the actual mechanism**: `/api/cron/reminders` (GET,
+`src/app/api/cron/reminders/route.ts`) is the sweep — it checks which
+`TaskNotification`s are due right now and sends push via the existing
+`webpush` helper to every stored subscription (same all-subscriptions
+assumption as `/api/push/send`), stamping `lastFiredForDate` so it won't
+refire within the same day. It's authenticated via a `CRON_SECRET` bearer
+token (env var, all environments) instead of the interactive session
+`auth()` check the rest of the app uses, since a scheduler has no browser
+session — `src/proxy.ts`'s matcher excludes `api/cron` so it isn't
+redirected to `/login`. `public/sw.js`'s push handler now reads
+`requireInteraction` from the payload so "with confirmation" alerts stay
+on screen until handled (Safari doesn't support in-notification action
+buttons/sliders at all — investigated, this is the practical substitute:
+tap → deep-link straight to a one-button confirm screen).
+
+**Why not Vercel Cron**: Hobby-plan cron jobs can only run once a day
+(with up to ~59min of jitter even then) — nowhere near precise enough for
+"remind me at 14:30". Rather than pay for Pro, a GitHub Actions workflow
+(`.github/workflows/reminders-cron.yml`, repo's already on GitHub) hits
+the sweep endpoint every 15 minutes for free. **This needs two repository
+secrets added manually in GitHub (Settings → Secrets and variables →
+Actions)**: `APP_URL` (the production URL, `https://myapp-one-pearl.
+vercel.app`) and `CRON_SECRET` (same value as the Vercel env var) — no
+GitHub MCP tool was available in this session to set Actions secrets, so
+this step is still pending as of 2026-07-22.
+
+**Known gaps, not yet fixed**:
+- Live end-to-end testing of the confirm-screen/push flow and the cron
+  endpoint's bearer-auth check couldn't be completed from the cloud
+  session: Chromium can't reach the live Vercel URL through this
+  environment's proxy (connection reset, suspected HTTP/2-over-tunnel
+  incompatibility — the proxy's own docs list HTTP/2-only APIs as an
+  unsupported category), and pulling `CRON_SECRET` back out of Vercel to
+  test with curl kept getting masked to a placeholder by this session's
+  own secret-redaction layer even in non-printed variable substitutions.
+  Verified instead via: type-checking, lint, manually-checked
+  recurrence/streak logic, and curl-based checks (with a real logged-in
+  session cookie) confirming Home/Recordatorios render real seeded data
+  correctly. **Test the actual notification tap → confirm screen flow for
+  real on a phone before trusting it fully.**
+- No snooze/postpone on the confirm screen, no defined behavior for
+  what a broken streak displays (currently just resets to 0), and it's
+  undecided whether tags should ever be shared with Notes — all
+  explicitly deferred in `docs/recordatorios-plan.md`, not oversights.
+- `recordatorios/task-list.tsx`'s quick-complete checkbox always confirms
+  without a note/value even for LOGGED tasks (that richer flow only
+  exists on the push-notification confirm screen) — fine per the product
+  spec, just worth knowing before "fixing" it.
