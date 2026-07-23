@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Eye, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Chip } from "@/components/ui/chip";
 import { createTask, updateTask } from "./actions";
 import { FieldBuilder } from "./field-builder";
+import { PreviewOverlay } from "./preview-overlay";
 import type { Recurrence } from "@/lib/recurrence";
 import type { FormFieldDef } from "@/lib/form-schema";
 
@@ -190,6 +191,18 @@ export function TaskForm({
   const [formFields, setFormFields] = useState<FormFieldDef[]>(task?.formSchema ?? []);
 
   const [moreOpen, setMoreOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewValues, setPreviewValues] = useState({ title: "", description: "" });
+  const titleRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  function openPreview() {
+    setPreviewValues({
+      title: titleRef.current?.value ?? "",
+      description: descriptionRef.current?.value ?? "",
+    });
+    setPreviewOpen(true);
+  }
 
   function addNotification() {
     setNotifications((rows) => [
@@ -262,8 +275,10 @@ export function TaskForm({
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="flex flex-col gap-6 px-4 py-6">
       <input
+        ref={titleRef}
         name="title"
         required
         defaultValue={task?.title}
@@ -444,7 +459,14 @@ export function TaskForm({
       </div>
 
       <div className="flex flex-col gap-3">
-        <Label>Seguimiento</Label>
+        <div className="flex items-center justify-between">
+          <Label>Seguimiento</Label>
+          {trackingType === "COMPOUND" && (
+            <Button type="button" variant="outline" size="sm" onClick={openPreview}>
+              <Eye className="size-4" /> Previsualizar
+            </Button>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           <Chip pressed={trackingType === "SIMPLE"} onClick={() => setTrackingType("SIMPLE")}>
             Solo notificación
@@ -513,6 +535,7 @@ export function TaskForm({
               <div className="flex flex-col gap-2">
                 <Label htmlFor="description">Descripción</Label>
                 <Textarea
+                  ref={descriptionRef}
                   id="description"
                   name="description"
                   defaultValue={task?.description ?? ""}
@@ -554,5 +577,18 @@ export function TaskForm({
         {task ? "Guardar cambios" : "Crear recordatorio"}
       </Button>
     </form>
+
+    <AnimatePresence>
+      {previewOpen && (
+        <PreviewOverlay
+          title={previewValues.title}
+          description={previewValues.description || null}
+          confirmMode={confirmMode}
+          formSchema={formFields}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
