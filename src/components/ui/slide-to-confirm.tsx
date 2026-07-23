@@ -6,6 +6,15 @@ import { cn } from "@/lib/utils";
 
 const THUMB_SIZE = 46;
 const TRACK_PADDING = 8;
+// A little overshoot on release feels more "physical" than a plain ease —
+// matches the spring-like snap-back iOS controls use.
+const SNAP_BACK_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+// Prevents the mobile-browser default: a solid grey/blue highlight box
+// flashing over the element on tap, and (Safari) the long-press callout
+// menu — both make a custom control feel like an unstyled `<button>` was
+// tapped underneath it instead of the control itself responding.
+const NO_TOUCH_CHROME = "[-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]";
 
 export function SlideToConfirm({
   label = "Deslizá para confirmar",
@@ -42,6 +51,7 @@ export function SlideToConfirm({
     setConfirmed(true);
     setDragging(false);
     setDragX(max);
+    if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(15);
     onConfirm();
   }
 
@@ -76,6 +86,9 @@ export function SlideToConfirm({
   }
 
   const progress = max > 0 ? dragX / max : 0;
+  const thumbTransition = dragging
+    ? "none"
+    : `transform 0.35s ${SNAP_BACK_EASING}, scale 0.15s ease, box-shadow 0.15s ease`;
 
   return (
     <div
@@ -88,12 +101,24 @@ export function SlideToConfirm({
       tabIndex={disabled ? -1 : 0}
       onKeyDown={handleKeyDown}
       className={cn(
-        "relative flex h-[54px] w-full max-w-xs items-center rounded-full border p-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+        "relative flex h-[54px] w-full max-w-xs touch-none select-none items-center overflow-hidden rounded-full border p-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+        NO_TOUCH_CHROME,
         confirmed
           ? "border-green-500 bg-green-500"
           : "border-black/10 bg-white dark:border-white/10 dark:bg-zinc-900"
       )}
     >
+      {/* Fill trail — grows with the drag instead of the track snapping to
+          green only at 100%, so partial progress reads as progress. */}
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-y-0 left-0 rounded-full bg-foreground/10 dark:bg-white/10",
+          !dragging && "transition-[width] duration-300"
+        )}
+        style={{ width: `${dragX + THUMB_SIZE / 2 + TRACK_PADDING / 2}px` }}
+      />
+
       <span
         className={cn(
           "pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-medium",
@@ -107,15 +132,19 @@ export function SlideToConfirm({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
         style={{
           transform: `translateX(${dragX}px)`,
           width: THUMB_SIZE,
           height: THUMB_SIZE,
-          transition: dragging ? "none" : "transform 0.2s ease",
+          transition: thumbTransition,
         }}
         className={cn(
-          "relative z-10 flex shrink-0 items-center justify-center rounded-full",
-          dragging ? "cursor-grabbing" : "cursor-grab",
+          "relative z-10 flex shrink-0 touch-none select-none items-center justify-center rounded-full shadow-sm",
+          NO_TOUCH_CHROME,
+          dragging ? "cursor-grabbing scale-105 shadow-md" : "cursor-grab",
           confirmed ? "bg-white text-green-500" : "bg-foreground text-background"
         )}
       >
