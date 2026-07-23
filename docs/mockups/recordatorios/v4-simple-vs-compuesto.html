@@ -1,0 +1,482 @@
+<title>Mockup — Simple vs Compuesto (v4)</title>
+<style>
+  :root {
+    --bg: #fafafa; --surface: #ffffff; --ink: #18181b; --ink-dim: #71717a;
+    --border: #e4e4e7; --accent-fill: #18181b; --accent-ink: #fafafa; --good: #16a34a;
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000; --surface: #0f0f10; --ink: #fafafa; --ink-dim: #a1a1aa;
+    --border: #27272a; --accent-fill: #fafafa; --accent-ink: #18181b; --good: #4ade80;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #000000; --surface: #0f0f10; --ink: #fafafa; --ink-dim: #a1a1aa;
+      --border: #27272a; --accent-fill: #fafafa; --accent-ink: #18181b; --good: #4ade80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "SF Pro Text", "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; align-items: center;
+    gap: 24px; padding: 32px 16px 64px; min-height: 100vh;
+  }
+  .meta { max-width: 390px; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+  .meta .eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); font-weight: 600; }
+  .meta h1 { font-size: 17px; font-weight: 600; margin: 0; }
+  .meta p { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; line-height: 1.5; }
+
+  .tabs { display: flex; gap: 8px; max-width: 390px; width: 100%; flex-wrap: wrap; }
+  .tab { flex: 1; min-width: 110px; padding: 8px 6px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-dim); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .tab[aria-pressed="true"] { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent-fill); }
+
+  .phone { width: 390px; max-width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 40px; box-shadow: 0 20px 60px -20px rgba(0,0,0,0.25); overflow: hidden; position: relative; }
+  .notch { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 90px; height: 22px; background: #000; border-radius: 12px; z-index: 5; }
+  .screen { padding-top: 54px; min-height: 700px; display: flex; flex-direction: column; }
+  header.topbar { display: flex; align-items: center; gap: 12px; padding: 4px 16px 14px; }
+  .backbtn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink-dim); flex-shrink: 0; }
+  header.topbar h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .content { flex: 1; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 20px; }
+
+  .field-label { font-size: 12px; font-weight: 600; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+  .field-group { display: flex; flex-direction: column; gap: 10px; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font-size: 13.5px; font-weight: 500; padding: 8px 14px; border-radius: 999px; font-family: inherit; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+  .chip[aria-pressed="true"] { background: var(--accent-fill); color: var(--accent-ink); border-color: var(--accent-fill); }
+
+  .hint { font-size: 12.5px; color: var(--ink-dim); line-height: 1.5; }
+
+  .inline-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* field builder */
+  .field-builder-row { display: flex; align-items: center; gap: 8px; }
+  .field-builder-row input[type="text"] {
+    flex: 1; font-family: inherit; font-size: 13.5px; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px;
+  }
+  .field-builder-row select {
+    font-family: inherit; font-size: 12.5px; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 9px; padding: 8px 8px; width: 108px;
+  }
+  .field-builder-row .remove-btn { background: none; border: none; color: var(--ink-dim); cursor: pointer; padding: 4px; flex-shrink: 0; }
+  .field-builder-row .remove-btn:hover { color: #dc2626; }
+
+  .field-wrapper { display: flex; flex-direction: column; gap: 8px; }
+  .subfields-panel {
+    margin-left: 18px; padding: 10px; border-left: 2px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .subfields-panel .hint { margin: 0 0 2px; }
+  .subfield-row { display: flex; align-items: center; gap: 8px; }
+  .subfield-row input[type="text"] {
+    flex: 1; font-family: inherit; font-size: 12.5px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px;
+  }
+  .subfield-row select {
+    font-family: inherit; font-size: 12px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 6px; width: 96px;
+  }
+
+  /* Repeatable group in the confirm form */
+  .group-block { display: flex; flex-direction: column; gap: 10px; }
+  .group-title { font-size: 12.5px; font-weight: 600; color: var(--ink-dim); }
+  .group-instance {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; display: flex; flex-direction: column; gap: 10px; position: relative;
+  }
+  .group-instance .remove-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--ink-dim); cursor: pointer; padding: 2px; }
+  .group-instance .remove-btn:hover { color: #dc2626; }
+  .group-instance .form-field label { font-size: 11px; }
+  .add-group-btn {
+    border: 1px dashed var(--border); background: transparent; color: var(--ink-dim); font-family: inherit;
+    font-size: 13px; font-weight: 500; padding: 10px; border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .add-group-btn:hover { color: var(--ink); border-color: var(--ink-dim); }
+
+  .add-another { background: none; border: none; color: var(--ink-dim); font-size: 13px; font-weight: 500; font-family: inherit; display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; align-self: flex-start; }
+  .add-another:hover { color: var(--ink); }
+
+  /* Notification preview card */
+  .push-preview {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px;
+    display: flex; gap: 10px; align-items: flex-start; box-shadow: 0 8px 20px -12px rgba(0,0,0,0.3);
+  }
+  .push-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--accent-fill); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .push-body { display: flex; flex-direction: column; gap: 2px; }
+  .push-app { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+  .push-title { font-size: 13.5px; font-weight: 600; }
+  .push-msg { font-size: 12.5px; color: var(--ink-dim); }
+
+  .confirm-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 20px; text-align: center; }
+  .confirm-title { font-size: 19px; font-weight: 600; margin: 0; }
+  .confirm-sub { font-size: 13px; color: var(--ink-dim); margin: 0; }
+
+  /* Slide to confirm */
+  .slide-track {
+    width: 100%; max-width: 280px; height: 54px; border-radius: 27px; background: var(--surface);
+    border: 1px solid var(--border); position: relative; display: flex; align-items: center; padding: 4px;
+    touch-action: none; user-select: none;
+  }
+  .slide-track .slide-label { position: absolute; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 500; color: var(--ink-dim); pointer-events: none; }
+  .slide-thumb {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--accent-fill); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center; cursor: grab; position: relative; z-index: 2;
+  }
+  .slide-track.confirmed { background: var(--good); border-color: var(--good); }
+  .slide-track.confirmed .slide-label { color: var(--accent-ink); font-weight: 600; }
+  .slide-track.confirmed .slide-thumb { background: var(--accent-ink); color: var(--good); }
+
+  /* Custom form fields */
+  .form-fields { width: 100%; max-width: 280px; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+  .form-field label { font-size: 12px; font-weight: 600; color: var(--ink-dim); display: block; margin-bottom: 6px; }
+  .form-field input {
+    width: 100%; font-family: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+  }
+  .cta-inline { width: 100%; max-width: 280px; padding: 13px; border-radius: 12px; border: none; background: var(--accent-fill); color: var(--accent-ink); font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+
+  .footer { padding: 12px 16px 18px; border-top: 1px solid var(--border); background: var(--bg); }
+  .cta { width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--accent-fill); color: var(--accent-ink); font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+
+  .theme-toggle { position: fixed; top: 16px; right: 16px; font-size: 11px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-dim); cursor: pointer; font-family: inherit; }
+</style>
+
+<button class="theme-toggle" id="themeToggle" type="button">☾ / ☀</button>
+
+<div class="meta">
+  <span class="eyebrow">Mockup — Parte 4 de N</span>
+  <h1>Simple vs Compuesto (slider / formulario)</h1>
+  <p>3 vistas: cómo elegís el tipo al crear la tarea, y cómo se ve del otro lado cuando te llega la notificación y confirmás (slider o formulario).</p>
+</div>
+
+<div class="tabs">
+  <button class="tab" data-view="config" aria-pressed="true" type="button">Configuración</button>
+  <button class="tab" data-view="slider" aria-pressed="false" type="button">Confirmar: slider</button>
+  <button class="tab" data-view="form" aria-pressed="false" type="button">Confirmar: formulario</button>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+
+    <!-- ============ CONFIG VIEW ============ -->
+    <div id="viewConfig">
+      <header class="topbar">
+        <div class="backbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <h2>Tipo de seguimiento</h2>
+      </header>
+      <div class="content">
+        <div class="field-group">
+          <span class="field-label">¿Cómo lo querés seguir?</span>
+          <div class="chip-row" id="trackChips">
+            <button class="chip" data-track="SIMPLE" aria-pressed="true" type="button">Solo notificación</button>
+            <button class="chip" data-track="COMPOUND" aria-pressed="false" type="button">Con historial y progreso</button>
+          </div>
+          <p class="hint" id="trackHint">Te avisa y listo — no queda registrado en ningún lado, no aparece en la pestaña Progreso.</p>
+        </div>
+
+        <div class="field-group" id="compoundOptions" style="display:none;">
+          <span class="field-label">¿Cómo confirmás?</span>
+          <div class="chip-row" id="modeChips">
+            <button class="chip" data-mode="SLIDER" aria-pressed="true" type="button">Deslizar para confirmar</button>
+            <button class="chip" data-mode="FORM" aria-pressed="false" type="button">Formulario personalizado</button>
+          </div>
+
+          <div class="inline-panel" id="sliderExplain">
+            <p class="hint" style="margin:0;">Al tocar la notificación, ves un slider — lo deslizás y queda marcado. Sirve para hábitos donde solo importa si lo hiciste o no (ej. "hacer ejercicio").</p>
+          </div>
+
+          <div class="inline-panel" id="formBuilder" style="display:none;">
+            <span class="hint" style="margin-bottom:2px;">Campos del formulario:</span>
+            <div id="fieldRows"></div>
+            <button class="add-another" type="button" id="addFieldBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar campo
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="footer"><button class="cta" type="button">Continuar</button></div>
+    </div>
+
+    <!-- ============ SLIDER CONFIRM VIEW ============ -->
+    <div id="viewSlider" style="display:none; flex:1; display:none; flex-direction:column;">
+      <header class="topbar">
+        <div class="backbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <h2>&nbsp;</h2>
+      </header>
+      <div class="content" style="padding-top:8px;">
+        <div class="push-preview">
+          <div class="push-icon">🏃</div>
+          <div class="push-body">
+            <span class="push-app">Mi App</span>
+            <span class="push-title">Hacer ejercicio</span>
+            <span class="push-msg">Tocá para confirmar</span>
+          </div>
+        </div>
+      </div>
+      <div class="confirm-center">
+        <h1 class="confirm-title">Hacer ejercicio</h1>
+        <p class="confirm-sub">Martes y jueves</p>
+        <div class="slide-track" id="slideTrack">
+          <span class="slide-label" id="slideLabel">Deslizá para confirmar</span>
+          <div class="slide-thumb" id="slideThumb">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FORM CONFIRM VIEW ============ -->
+    <div id="viewForm" style="display:none; flex:1; flex-direction:column;">
+      <header class="topbar">
+        <div class="backbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></div>
+        <h2>&nbsp;</h2>
+      </header>
+      <div class="content" style="padding-top:8px;">
+        <div class="push-preview">
+          <div class="push-icon">🍽️</div>
+          <div class="push-body">
+            <span class="push-app">Mi App</span>
+            <span class="push-title">Registrar comida</span>
+            <span class="push-msg">Tocá para completar el registro</span>
+          </div>
+        </div>
+      </div>
+      <div class="confirm-center" style="justify-content:flex-start; padding-top:24px;">
+        <h1 class="confirm-title">Registrar comida</h1>
+        <div class="form-fields">
+          <div class="group-block">
+            <span class="group-title">Comidas</span>
+            <div id="groupInstances"></div>
+            <button class="add-group-btn" type="button" id="addGroupBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar otra comida
+            </button>
+          </div>
+          <button class="cta-inline" type="button">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tabs .tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tabs .tab').forEach((t) => t.setAttribute('aria-pressed', 'false'));
+      tab.setAttribute('aria-pressed', 'true');
+      const v = tab.dataset.view;
+      document.getElementById('viewConfig').style.display = v === 'config' ? 'block' : 'none';
+      document.getElementById('viewSlider').style.display = v === 'slider' ? 'flex' : 'none';
+      document.getElementById('viewForm').style.display = v === 'form' ? 'flex' : 'none';
+    });
+  });
+
+  // Tracking type chips
+  const trackChips = document.querySelectorAll('#trackChips .chip');
+  const compoundOptions = document.getElementById('compoundOptions');
+  const trackHint = document.getElementById('trackHint');
+  trackChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      trackChips.forEach((c) => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      const isCompound = chip.dataset.track === 'COMPOUND';
+      compoundOptions.style.display = isCompound ? 'flex' : 'none';
+      trackHint.textContent = isCompound
+        ? 'Queda en Progreso con racha y calendario. Elegí abajo cómo confirmás cada vez.'
+        : 'Te avisa y listo — no queda registrado en ningún lado, no aparece en la pestaña Progreso.';
+    });
+  });
+
+  // Slider vs Form mode chips
+  const modeChips = document.querySelectorAll('#modeChips .chip');
+  const sliderExplain = document.getElementById('sliderExplain');
+  const formBuilder = document.getElementById('formBuilder');
+  modeChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      modeChips.forEach((c) => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      const isForm = chip.dataset.mode === 'FORM';
+      sliderExplain.style.display = isForm ? 'none' : 'flex';
+      formBuilder.style.display = isForm ? 'flex' : 'none';
+    });
+  });
+
+  // Field builder
+  const fieldRows = document.getElementById('fieldRows');
+  const fieldTypes = ['Texto', 'Número', 'Sí / No', 'Fecha', 'Hora', 'Opciones', 'Múltiple (grupo)'];
+
+  function makeMiniFieldRow(name, type, onRemove) {
+    const row = document.createElement('div');
+    row.className = 'subfield-row';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'Nombre del sub-campo';
+    nameInput.value = name || '';
+    const select = document.createElement('select');
+    ['Texto', 'Número', 'Sí / No', 'Fecha', 'Hora', 'Opciones'].forEach((t) => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      if (t === type) opt.selected = true;
+      select.appendChild(opt);
+    });
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.type = 'button';
+    removeBtn.setAttribute('aria-label', 'Eliminar sub-campo');
+    removeBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6h12z"/></svg>';
+    removeBtn.addEventListener('click', onRemove);
+    row.appendChild(nameInput);
+    row.appendChild(select);
+    row.appendChild(removeBtn);
+    return row;
+  }
+
+  function addFieldRow(name, type, subfields) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'field-wrapper';
+
+    const row = document.createElement('div');
+    row.className = 'field-builder-row';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'Nombre del campo';
+    nameInput.value = name || '';
+    const select = document.createElement('select');
+    fieldTypes.forEach((t) => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      if (t === type) opt.selected = true;
+      select.appendChild(opt);
+    });
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.type = 'button';
+    removeBtn.setAttribute('aria-label', 'Eliminar campo');
+    removeBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6h12z"/></svg>';
+    removeBtn.addEventListener('click', () => wrapper.remove());
+    row.appendChild(nameInput);
+    row.appendChild(select);
+    row.appendChild(removeBtn);
+    wrapper.appendChild(row);
+
+    const subPanel = document.createElement('div');
+    subPanel.className = 'subfields-panel';
+    subPanel.style.display = type === 'Múltiple (grupo)' ? 'flex' : 'none';
+    const subHint = document.createElement('p');
+    subHint.className = 'hint';
+    subHint.textContent = 'Qué campos tiene cada repetición:';
+    const subList = document.createElement('div');
+    subList.style.display = 'flex';
+    subList.style.flexDirection = 'column';
+    subList.style.gap = '8px';
+    const addSubBtn = document.createElement('button');
+    addSubBtn.className = 'add-another';
+    addSubBtn.type = 'button';
+    addSubBtn.textContent = '+ Agregar sub-campo';
+    addSubBtn.addEventListener('click', () => {
+      subList.appendChild(makeMiniFieldRow('', 'Texto', function () { this_row_remove.call(this); }));
+    });
+    function this_row_remove() {}
+    subPanel.appendChild(subHint);
+    subPanel.appendChild(subList);
+    subPanel.appendChild(addSubBtn);
+    wrapper.appendChild(subPanel);
+
+    (subfields || []).forEach(([n, t]) => {
+      const r = makeMiniFieldRow(n, t, () => r.remove());
+      subList.appendChild(r);
+    });
+    // fix remove closures properly (needs r defined before handler)
+    Array.from(subList.children).forEach((r) => {
+      const btn = r.querySelector('.remove-btn');
+      btn.onclick = () => r.remove();
+    });
+
+    select.addEventListener('change', () => {
+      subPanel.style.display = select.value === 'Múltiple (grupo)' ? 'flex' : 'none';
+    });
+
+    fieldRows.appendChild(wrapper);
+  }
+  addFieldRow('Comidas', 'Múltiple (grupo)', [['Nombre de comida', 'Texto'], ['Calorías', 'Número']]);
+  document.getElementById('addFieldBtn').addEventListener('click', () => addFieldRow('', 'Texto'));
+
+  // Slide to confirm
+  const track = document.getElementById('slideTrack');
+  const thumb = document.getElementById('slideThumb');
+  const label = document.getElementById('slideLabel');
+  let dragging = false, startX = 0, thumbStartX = 0, confirmed = false;
+
+  function maxTravel() { return track.clientWidth - thumb.clientWidth - 8; }
+
+  function onDown(e) {
+    if (confirmed) return;
+    dragging = true;
+    startX = (e.touches ? e.touches[0].clientX : e.clientX);
+    thumbStartX = thumb.offsetLeft;
+    thumb.style.cursor = 'grabbing';
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    const x = (e.touches ? e.touches[0].clientX : e.clientX);
+    let delta = x - startX;
+    let newX = Math.min(Math.max(0, thumbStartX + delta), maxTravel());
+    thumb.style.transform = `translateX(${newX}px)`;
+    label.style.opacity = String(1 - newX / maxTravel());
+    if (newX >= maxTravel() - 2) confirmSlide();
+  }
+  function onUp() {
+    if (!dragging) return;
+    dragging = false;
+    thumb.style.cursor = 'grab';
+    if (!confirmed) {
+      thumb.style.transition = 'transform .2s ease';
+      thumb.style.transform = 'translateX(0px)';
+      label.style.opacity = '1';
+      setTimeout(() => { thumb.style.transition = ''; }, 200);
+    }
+  }
+  function confirmSlide() {
+    confirmed = true;
+    dragging = false;
+    thumb.style.transform = `translateX(${maxTravel()}px)`;
+    track.classList.add('confirmed');
+    label.textContent = '¡Confirmado!';
+    label.style.opacity = '1';
+  }
+  thumb.addEventListener('mousedown', onDown);
+  thumb.addEventListener('touchstart', onDown, { passive: true });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: true });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+
+  // Repeatable group instances on the confirm form
+  const groupInstances = document.getElementById('groupInstances');
+  function addGroupInstance() {
+    const inst = document.createElement('div');
+    inst.className = 'group-instance';
+    inst.innerHTML = `
+      <button class="remove-btn" type="button" aria-label="Eliminar comida">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="form-field"><label>Nombre de comida</label><input type="text" placeholder="Ej: Milanesa con puré" /></div>
+      <div class="form-field"><label>Calorías</label><input type="number" placeholder="Ej: 650" /></div>
+    `;
+    inst.querySelector('.remove-btn').addEventListener('click', () => inst.remove());
+    groupInstances.appendChild(inst);
+  }
+  addGroupInstance();
+  document.getElementById('addGroupBtn').addEventListener('click', addGroupInstance);
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    const current = root.getAttribute('data-theme');
+    root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+  });
+</script>

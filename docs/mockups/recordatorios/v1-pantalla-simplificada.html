@@ -1,0 +1,578 @@
+<title>Mockup — Nuevo recordatorio (v1)</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --ink: #18181b;
+    --ink-dim: #71717a;
+    --border: #e4e4e7;
+    --accent-fill: #18181b;
+    --accent-ink: #fafafa;
+    --danger: #dc2626;
+  }
+  :root[data-theme="dark"] {
+    --bg: #000000;
+    --surface: #0f0f10;
+    --ink: #fafafa;
+    --ink-dim: #a1a1aa;
+    --border: #27272a;
+    --accent-fill: #fafafa;
+    --accent-ink: #18181b;
+    --danger: #f87171;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #000000;
+      --surface: #0f0f10;
+      --ink: #fafafa;
+      --ink-dim: #a1a1aa;
+      --border: #27272a;
+      --accent-fill: #fafafa;
+      --accent-ink: #18181b;
+      --danger: #f87171;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "SF Pro Text", "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 32px 16px 64px;
+    min-height: 100vh;
+  }
+
+  .meta {
+    max-width: 390px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .meta .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    font-weight: 600;
+  }
+  .meta h1 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .meta p {
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin: 2px 0 0;
+    line-height: 1.5;
+  }
+
+  .phone {
+    width: 390px;
+    max-width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    box-shadow: 0 20px 60px -20px rgba(0,0,0,0.25);
+    overflow: hidden;
+    position: relative;
+  }
+  :root[data-theme="dark"] .phone,
+  @media (prefers-color-scheme: dark) { }
+  .notch {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90px;
+    height: 22px;
+    background: #000;
+    border-radius: 12px;
+    z-index: 5;
+  }
+  :root:not([data-theme="dark"]) .notch {
+    background: #000;
+  }
+
+  .screen {
+    padding-top: 54px;
+    min-height: 680px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header.topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 16px 14px;
+  }
+  .backbtn {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 999px;
+    color: var(--ink-dim);
+    flex-shrink: 0;
+  }
+  header.topbar h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .content {
+    flex: 1;
+    padding: 4px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    overflow-y: auto;
+  }
+
+  /* Title input — the primary, largest element on screen */
+  .title-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink);
+    padding: 2px 0 12px;
+    border-bottom: 1px solid var(--border);
+    font-family: inherit;
+  }
+  .title-input::placeholder { color: var(--ink-dim); font-weight: 500; }
+  .title-input:focus { outline: none; border-color: var(--ink); }
+
+  .field-group { display: flex; flex-direction: column; gap: 10px; }
+  .field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Chip row — replaces the old <Select> for recurrence */
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--accent-fill);
+    color: var(--accent-ink);
+    border-color: var(--accent-fill);
+  }
+
+  .inline-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .weekday-row { display: flex; gap: 6px; }
+  .weekday-btn {
+    width: 34px; height: 34px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .weekday-btn[aria-pressed="true"] {
+    background: var(--accent-fill);
+    color: var(--accent-ink);
+    border-color: var(--accent-fill);
+  }
+  .date-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .date-row input[type="date"] {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    text-align: right;
+  }
+
+  /* Single reminder-time row — replaces the multi-row notification list */
+  .time-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .time-row .time-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .time-row .clock {
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-dim);
+    flex-shrink: 0;
+  }
+  .time-value {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 16px;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    color: var(--ink);
+    width: 70px;
+  }
+  .confirm-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: var(--ink-dim);
+  }
+  .switch {
+    width: 32px; height: 19px;
+    border-radius: 999px;
+    background: var(--border);
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 15px; height: 15px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    transition: transform 0.15s ease;
+  }
+  .switch[aria-checked="true"] {
+    background: var(--accent-fill);
+  }
+  .switch[aria-checked="true"]::after {
+    transform: translateX(13px);
+    background: var(--accent-ink);
+  }
+
+  .add-another {
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .add-another:hover { color: var(--ink); }
+
+  /* Collapsed "more options" disclosure */
+  .more-options summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-dim);
+    cursor: pointer;
+    padding: 10px 2px;
+    border-top: 1px solid var(--border);
+  }
+  .more-options summary::-webkit-details-marker { display: none; }
+  .more-options summary .chev {
+    transition: transform 0.15s ease;
+  }
+  .more-options[open] summary .chev { transform: rotate(90deg); }
+  .more-options[open] summary { color: var(--ink); }
+
+  .more-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 4px;
+  }
+  .plain-field { display: flex; flex-direction: column; gap: 6px; }
+  .plain-field label { font-size: 12px; font-weight: 600; color: var(--ink-dim); }
+  .plain-field input, .plain-field textarea {
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 11px;
+  }
+  .plain-field textarea { resize: none; min-height: 60px; }
+
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .segmented button {
+    flex: 1;
+    padding: 9px 8px;
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    border: none;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .segmented button + button { border-left: 1px solid var(--border); }
+  .segmented button[aria-pressed="true"] {
+    background: var(--accent-fill);
+    color: var(--accent-ink);
+  }
+
+  .footer {
+    padding: 12px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .cta {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent-fill);
+    color: var(--accent-ink);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .annot {
+    max-width: 390px;
+    width: 100%;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+    border-top: 1px dashed var(--border);
+    padding-top: 14px;
+  }
+  .annot b { color: var(--ink); font-weight: 600; }
+
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-dim);
+    cursor: pointer;
+    font-family: inherit;
+  }
+</style>
+
+<button class="theme-toggle" id="themeToggle" type="button">☾ / ☀</button>
+
+<div class="meta">
+  <span class="eyebrow">Mockup — Parte 1 de N</span>
+  <h1>Crear recordatorio, versión simplificada</h1>
+  <p>Todo interactivo (probá los chips, el switch, "Más opciones"). Nada de esto pega a la base de datos — es solo para decidir el flujo antes de tocar código.</p>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <header class="topbar">
+      <div class="backbtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+      <h2>Nuevo recordatorio</h2>
+    </header>
+
+    <div class="content">
+      <input class="title-input" placeholder="¿Qué querés recordar?" value="Pagar el alquiler" />
+
+      <div class="field-group">
+        <span class="field-label">Repetición</span>
+        <div class="chip-row" id="recChips">
+          <button class="chip" data-rec="NONE" aria-pressed="true" type="button">Una vez</button>
+          <button class="chip" data-rec="DAILY" aria-pressed="false" type="button">Todos los días</button>
+          <button class="chip" data-rec="WEEKDAYS" aria-pressed="false" type="button">Días de semana</button>
+          <button class="chip" data-rec="MONTHLY" aria-pressed="false" type="button">Mensual</button>
+          <button class="chip" data-rec="MORE" aria-pressed="false" type="button">Otra…</button>
+        </div>
+
+        <div class="inline-panel" id="panelNone">
+          <div class="date-row">
+            <span style="font-size:14px;">Fecha límite</span>
+            <input type="date" value="2026-08-01" />
+          </div>
+        </div>
+
+        <div class="inline-panel" id="panelWeekdays" style="display:none;">
+          <div class="weekday-row">
+            <button class="weekday-btn" type="button">D</button>
+            <button class="weekday-btn" aria-pressed="true" type="button">L</button>
+            <button class="weekday-btn" aria-pressed="true" type="button">M</button>
+            <button class="weekday-btn" aria-pressed="true" type="button">M</button>
+            <button class="weekday-btn" aria-pressed="true" type="button">J</button>
+            <button class="weekday-btn" aria-pressed="true" type="button">V</button>
+            <button class="weekday-btn" type="button">S</button>
+          </div>
+        </div>
+
+        <div class="inline-panel" id="panelMonthly" style="display:none;">
+          <div class="date-row">
+            <span style="font-size:14px;">Día del mes</span>
+            <input type="number" min="1" max="31" value="1" style="width:50px; text-align:right; border:none; background:transparent; font-family:inherit; font-size:14px; color:var(--ink);" />
+          </div>
+        </div>
+
+        <div class="inline-panel" id="panelMore" style="display:none;">
+          <span style="font-size:13px; color:var(--ink-dim);">Cada X días/semanas, o una fecha anual (cumpleaños, aniversarios) — mismos controles que hoy, pero tapados acá porque casi no se usan.</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <span class="field-label">Aviso</span>
+        <div class="time-row">
+          <div class="time-main">
+            <span class="clock">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </span>
+            <input class="time-value" type="time" value="09:00" />
+          </div>
+          <div class="confirm-toggle">
+            <span>Confirmar</span>
+            <div class="switch" id="confirmSwitch" role="switch" aria-checked="false"></div>
+          </div>
+        </div>
+        <button class="add-another" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Agregar otro aviso
+        </button>
+      </div>
+
+      <details class="more-options">
+        <summary>
+          Más opciones
+          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </summary>
+        <div class="more-body">
+          <div class="plain-field">
+            <label>Descripción</label>
+            <textarea placeholder="Opcional"></textarea>
+          </div>
+          <div class="plain-field">
+            <label>Etiquetas</label>
+            <input placeholder="trabajo, trámites, ..." />
+          </div>
+          <div class="plain-field">
+            <label>Seguimiento</label>
+            <div class="segmented">
+              <button aria-pressed="true" type="button">Simple</button>
+              <button aria-pressed="false" type="button">Con historial</button>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="footer">
+      <button class="cta" type="button">Crear recordatorio</button>
+    </div>
+  </div>
+</div>
+
+<div class="annot">
+  <b>Qué cambia respecto a la versión actual:</b> de ~8 secciones siempre visibles (título, descripción, etiquetas, seguimiento, repetición + subcampos, lista de avisos con switch cada uno) pasa a <b>3 visibles</b> (título, repetición, un aviso) + el resto tapado en <b>"Más opciones"</b>. El "Select" de repetición se reemplaza por chips porque las 3-4 opciones más usadas (una vez / diario / días de semana / mensual) quedan un toque visible en vez de un dropdown que hay que abrir. Los avisos múltiples pasan de "lista siempre abierta" a "uno por defecto + agregar otro si hace falta".
+</div>
+
+<script>
+  const chips = document.querySelectorAll('#recChips .chip');
+  const panels = {
+    NONE: document.getElementById('panelNone'),
+    WEEKDAYS: document.getElementById('panelWeekdays'),
+    MONTHLY: document.getElementById('panelMonthly'),
+    DAILY: null,
+    MORE: document.getElementById('panelMore'),
+  };
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chips.forEach((c) => c.setAttribute('aria-pressed', 'false'));
+      chip.setAttribute('aria-pressed', 'true');
+      Object.values(panels).forEach((p) => { if (p) p.style.display = 'none'; });
+      const target = panels[chip.dataset.rec];
+      if (target) target.style.display = 'flex';
+    });
+  });
+
+  document.querySelectorAll('.weekday-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+    });
+  });
+
+  document.querySelectorAll('.segmented').forEach((group) => {
+    group.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        group.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+      });
+    });
+  });
+
+  const sw = document.getElementById('confirmSwitch');
+  sw.addEventListener('click', () => {
+    sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+  });
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    const current = root.getAttribute('data-theme');
+    root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+  });
+</script>

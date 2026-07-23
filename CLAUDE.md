@@ -112,7 +112,10 @@ Done:
   component `src/components/push-manager.tsx` (now rendered on Home, see
   below) — **now actually used for real reminders**, not just plumbing
 - **Recordatorios (reminders/to-do) + Progress — full feature, see its own
-  section below**
+  section below.** A redesign of its create/confirm UI and tracking-type
+  model was planned 2026-07-23 (not yet built) — see "Recordatorios
+  redesign — planned 2026-07-23" section below before touching this
+  feature's code.
 - `postinstall: prisma generate` in `package.json` — **required** because
   `src/generated/prisma` is gitignored (it's generated code); without this
   script a fresh clone (e.g. Vercel's build) fails looking for that module
@@ -124,6 +127,11 @@ Done:
   session* before it ships, see the TCP-vs-HTTPS gotcha below).
 
 Not done yet:
+- Recordatorios redesign (simplified create UI, 4-type recurrence,
+  Simple-vs-Compuesto tracking model, custom form builder with
+  repeatable field groups) — planned and mocked up 2026-07-23, not
+  built. See `docs/recordatorios-plan.md` and its own CLAUDE.md section
+  below before implementing.
 - Tracker UI beyond Recordatorios (the generic `TrackerEntry` model still
   has no pages/actions of its own — habits/health tracking would use it,
   not started, no fixed date)
@@ -337,6 +345,52 @@ this step is still pending as of 2026-07-22.
   without a note/value even for LOGGED tasks (that richer flow only
   exists on the push-notification confirm screen) — fine per the product
   spec, just worth knowing before "fixing" it.
+
+## Recordatorios redesign — planned 2026-07-23, NOT implemented yet
+
+A full redesign of the create/confirm UI and the tracking-type model was
+worked out with the owner via iterative mockups (part-by-part, each one
+reviewed and adjusted before moving on) — **this is a plan, the code
+above still reflects the 2026-07-22 version.** Full spec:
+`docs/recordatorios-plan.md` (rewritten to describe the new design, with
+a banner at the top saying so). Interactive mockups saved at
+`docs/mockups/recordatorios/` (`v1`–`v4`, each a standalone HTML file —
+open directly in a browser, no build step).
+
+Headline changes, don't re-implement the old shape without re-reading
+the plan doc first:
+- Recurrence cut from 6 types to 4 — `INTERVAL` and `YEARLY` are
+  **removed from scope**, not just hidden.
+- `MONTHLY` gets multi-day selection (grid 1–31) plus a separate
+  "Último día del mes" option (distinct from picking day 31 — the
+  latter skips months that lack that day, e.g. February; the former
+  always lands on the real last day, 28–31 as applicable).
+- Date and reminder become separate concepts: `NONE`/`MONTHLY` have a
+  date (optionally with a specific event time); the reminder itself is
+  "N días antes, a las HH:mm" (stepper 0–90) rather than a fixed clock
+  time. `DAILY`/`WEEKDAYS` keep the old "hora del día" reminder shape
+  since they have no date to offset from. For `MONTHLY` with several
+  days picked, one shared set of reminders applies to all of them —
+  not configured per individual date.
+- Notification message becomes a free-text field per task (not per
+  notification), defaulting to the task title verbatim if left blank
+  (no auto-appended suffix — explicitly rejected by the owner).
+- `SIMPLE`/`LOGGED` tracking types are **redefined**, not just
+  renamed: `SIMPLE` becomes "notification only" and drops out of the
+  Progress tab entirely (today both types show streak/heatmap).
+  `LOGGED` (renamed "Compuesto" in the UI) is the only type with
+  history/progress, and itself branches into two confirm styles:
+  slide-to-confirm (replacing the current plain "Confirmar" button,
+  no fields) or a **user-defined custom form** (field builder: name +
+  type per field — Texto/Número/Sí-No/Fecha/Hora/Opciones — plus a
+  "Múltiple (grupo)" type whose fields repeat N times per confirmation,
+  e.g. a "Comidas" group with Nombre+Calorías sub-fields and an "Agregar
+  otra comida" button). This replaces today's hardcoded single
+  `value`+`note` pair on `TaskCompletion`.
+- Data model for the field builder / repeatable groups / per-task
+  message was **not** designed yet — that's explicitly deferred to a
+  technical-design pass (see "Fuera de alcance" in the plan doc), not an
+  oversight.
 
 ## PWA UI polish — 2026-07-22
 
