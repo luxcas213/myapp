@@ -8,6 +8,7 @@ import { getActiveTasks } from "@/lib/tasks";
 import { dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
 import { prisma } from "@/lib/prisma";
 import type { FormFieldDef, FormValues } from "@/lib/form-schema";
+import { appNow } from "@/lib/timezone";
 import { TaskList, type ListedTask } from "./task-list";
 import { ProgressView, type ProgressTask } from "./progress-view";
 import { HistoryView, type PastTask } from "./history-view";
@@ -15,7 +16,7 @@ import { HistoryView, type PastTask } from "./history-view";
 export const dynamic = "force-dynamic";
 
 export default async function RecordatoriosPage() {
-  const today = new Date();
+  const today = appNow();
   const todayKey = dateKey(today);
 
   const [activeTasks, pastDueTasks] = await Promise.all([

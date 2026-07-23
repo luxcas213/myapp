@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dateKey } from "@/lib/recurrence";
+import { appNow } from "@/lib/timezone";
 import { completeTaskWithData } from "../../actions";
 import { ConfirmScreen } from "../../confirm-screen";
 import type { FormFieldDef } from "@/lib/form-schema";
@@ -20,7 +21,7 @@ export default async function CompletarPage({
 
   if (!task || task.trackingType !== "COMPOUND" || task.confirmMode !== "FORM") notFound();
 
-  const today = dateKey(new Date());
+  const today = dateKey(appNow());
   const onSubmitForm = completeTaskWithData.bind(null, task.id, today);
 
   return (

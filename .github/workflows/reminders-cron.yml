@@ -2,10 +2,11 @@ name: Reminders sweep
 
 # Vercel's own Cron (Hobby plan) can only run once a day with up to ~59min
 # of jitter — not precise enough for "remind me at a specific time". This
-# workflow hits the sweep endpoint every 15 minutes instead, at no cost.
+# workflow hits the sweep endpoint every 5 minutes instead, at no cost.
+# (GitHub Actions' schedule floor is 5 minutes — can't go tighter than this.)
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 jobs:

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dateKey } from "@/lib/recurrence";
+import { appNow } from "@/lib/timezone";
 import { confirmFromNotification, confirmFromNotificationWithData } from "../../actions";
 import { ConfirmScreen } from "../../confirm-screen";
 import type { FormFieldDef } from "@/lib/form-schema";
@@ -21,7 +22,7 @@ export default async function ConfirmarPage({
 
   if (!notification) notFound();
 
-  const today = dateKey(new Date());
+  const today = dateKey(appNow());
   const task = notification.task;
   const confirmMode = task.confirmMode ?? "SLIDER";
 

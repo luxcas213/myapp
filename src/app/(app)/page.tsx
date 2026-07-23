@@ -3,13 +3,14 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { PushManager } from "@/components/push-manager";
 import { getActiveTasks } from "@/lib/tasks";
 import { dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
+import { appNow } from "@/lib/timezone";
 import { TaskList, type ListedTask } from "./recordatorios/task-list";
 import { QuickActions } from "./quick-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const today = new Date();
+  const today = appNow();
   const todayKey = dateKey(today);
   const tasks = await getActiveTasks();
 

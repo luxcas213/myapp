@@ -3,11 +3,15 @@ import { addDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { webpush } from "@/lib/push";
 import { dateKey, isOccurrenceDueOn, type Recurrence } from "@/lib/recurrence";
+import { appNow } from "@/lib/timezone";
 
-// How often the external scheduler (GitHub Actions) hits this route.
-// A notification fires once its configured time falls inside the window
-// ending "now" — wide enough to tolerate scheduler jitter/delay.
-const SWEEP_WINDOW_MINUTES = 15;
+// How often the external scheduler (GitHub Actions) hits this route (every
+// 5 minutes, see .github/workflows/reminders-cron.yml). A notification
+// fires once its configured time falls inside the window ending "now" —
+// kept wider than the sweep interval (2x) to tolerate GitHub Actions'
+// documented schedule jitter/delay under load, without ballooning into
+// the old 15-minute imprecision.
+const SWEEP_WINDOW_MINUTES = 10;
 
 function minutesSinceMidnight(date: Date) {
   return date.getHours() * 60 + date.getMinutes();
@@ -49,7 +53,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const now = new Date();
+  const now = appNow();
   const today = dateKey(now);
   const nowMinutes = minutesSinceMidnight(now);
 

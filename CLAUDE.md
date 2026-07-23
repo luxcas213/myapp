@@ -463,6 +463,51 @@ though it happily tunnels the HTTPS-based migration workaround. Treat the
 UI as build-clean and logic-verified, not as device-tested — same caveat
 that applied to the original Recordatorios ship on 2026-07-22.
 
+## Bug found via real data: server timezone mismatch, + faster sweep — 2026-07-23
+
+Two follow-ups the same day, found once the owner actually created a
+real task ("Prueba", `DAILY`, aviso a las 15:27) and it never fired.
+
+**Sweep interval**: `.github/workflows/reminders-cron.yml` now runs every
+**5 minutes** instead of 15 (GitHub Actions' documented floor — can't go
+tighter than that; going that frequent also means GitHub's own docs warn
+these schedules are the most likely to slip under load, so don't expect
+perfect 5-minute precision, just tighter than before).
+`SWEEP_WINDOW_MINUTES` in `src/app/api/cron/reminders/route.ts` is now
+`10` (kept wider than the 5-minute interval on purpose, to absorb that
+jitter, instead of shrinking 1:1 with it).
+
+**The actual bug**: querying the live DB directly (read-only, same
+`@neondatabase/serverless` HTTP-driver trick used for migrations) showed
+the "Prueba" task's notification had `timeOfDay: 927` (15:27) and
+`lastFiredForDate: null` — it had never fired despite being well past
+that time. Root cause: **the cron route computed "now" from the server's
+own clock** (`new Date()`), and Vercel functions run with the process
+clock in UTC — so a `timeOfDay` meant as 15:27 Argentina time was being
+compared against 15:27 UTC (= 12:27 ART), a completely different moment.
+This wasn't introduced by the 2026-07-23 redesign — the original
+2026-07-22 cron code had the identical bug (`minutesSinceMidnight(new
+Date())`), it just hadn't been noticed yet because this was the first
+real task created with a same-day, soon-to-fire time.
+
+**Fix**: new `src/lib/timezone.ts` exports `appNow()` — since Argentina
+doesn't observe DST (fixed UTC-3 year-round) and Vercel's server clock is
+UTC, shifting the UTC instant back exactly 3 hours makes every *local*
+`Date` getter (`getHours`, `getDate`, `getDay`, `getMonth`, and
+everything `date-fns`'s plain functions read internally) return
+Argentina's wall-clock values instead of UTC's — without needing the
+`Intl` timezone API. Swapped into every server-side "what is today/now"
+call site: the cron route, `(app)/page.tsx` and `recordatorios/page.tsx`
+(these decide what counts as "Hoy" vs "Próximas" and feed the streak
+calculation), and the two confirm-screen server pages (so a completion
+saves under the correct Argentina calendar date, not UTC's, near
+midnight). Client-side `new Date()` calls (e.g. `task-list.tsx`'s
+`todayKey`, native date/time `<input>`s) were **not** touched — those
+already run in the owner's own browser, in Argentina time, correctly.
+If this app is ever used from outside Argentina, `appNow()`'s hardcoded
+offset would need to become configurable — not a concern for a
+single-owner app pinned to one timezone.
+
 ## PWA UI polish — 2026-07-22
 
 Two fixes made after actually looking at the app on-device:
