@@ -113,9 +113,11 @@ Done:
   below) — **now actually used for real reminders**, not just plumbing
 - **Recordatorios (reminders/to-do) + Progress — full feature, see its own
   section below.** A redesign of its create/confirm UI and tracking-type
-  model was planned 2026-07-23 (not yet built) — see "Recordatorios
-  redesign — planned 2026-07-23" section below before touching this
-  feature's code.
+  model (planned earlier 2026-07-23) was **implemented the same day** — see
+  "Recordatorios redesign — implemented 2026-07-23" section below before
+  touching this feature's code; the 2026-07-22 shape it replaced
+  (`INTERVAL`/`YEARLY` recurrence, `LOGGED` with a fixed value+note pair,
+  streak/heatmap on `SIMPLE` too) is gone.
 - `postinstall: prisma generate` in `package.json` — **required** because
   `src/generated/prisma` is gitignored (it's generated code); without this
   script a fresh clone (e.g. Vercel's build) fails looking for that module
@@ -127,11 +129,10 @@ Done:
   session* before it ships, see the TCP-vs-HTTPS gotcha below).
 
 Not done yet:
-- Recordatorios redesign (simplified create UI, 4-type recurrence,
-  Simple-vs-Compuesto tracking model, custom form builder with
-  repeatable field groups) — planned and mocked up 2026-07-23, not
-  built. See `docs/recordatorios-plan.md` and its own CLAUDE.md section
-  below before implementing.
+- Device-testing the Recordatorios redesign (2026-07-23): build-clean and
+  logic-verified only, never exercised through a real login session from
+  this cloud sandbox (DB access needs raw TCP, which the proxy blocks) —
+  see "Recordatorios redesign — implemented 2026-07-23" below.
 - Tracker UI beyond Recordatorios (the generic `TrackerEntry` model still
   has no pages/actions of its own — habits/health tracking would use it,
   not started, no fixed date)
@@ -346,51 +347,121 @@ this step is still pending as of 2026-07-22.
   exists on the push-notification confirm screen) — fine per the product
   spec, just worth knowing before "fixing" it.
 
-## Recordatorios redesign — planned 2026-07-23, NOT implemented yet
+## Recordatorios redesign — implemented 2026-07-23
 
-A full redesign of the create/confirm UI and the tracking-type model was
-worked out with the owner via iterative mockups (part-by-part, each one
-reviewed and adjusted before moving on) — **this is a plan, the code
-above still reflects the 2026-07-22 version.** Full spec:
-`docs/recordatorios-plan.md` (rewritten to describe the new design, with
-a banner at the top saying so). Interactive mockups saved at
-`docs/mockups/recordatorios/` (`v1`–`v4`, each a standalone HTML file —
-open directly in a browser, no build step).
+The full redesign planned earlier the same day (iterative mockups,
+part-by-part, each reviewed before moving on) was built end-to-end in one
+pass under `/goal`. Full spec: `docs/recordatorios-plan.md` (its
+"not implemented yet" banner is stale now — the design it describes is
+what's live). Mockups that were used as the visual basis stay at
+`docs/mockups/recordatorios/` (`v1`–`v4`) for reference, not deleted.
 
-Headline changes, don't re-implement the old shape without re-reading
-the plan doc first:
-- Recurrence cut from 6 types to 4 — `INTERVAL` and `YEARLY` are
-  **removed from scope**, not just hidden.
-- `MONTHLY` gets multi-day selection (grid 1–31) plus a separate
-  "Último día del mes" option (distinct from picking day 31 — the
-  latter skips months that lack that day, e.g. February; the former
-  always lands on the real last day, 28–31 as applicable).
-- Date and reminder become separate concepts: `NONE`/`MONTHLY` have a
-  date (optionally with a specific event time); the reminder itself is
-  "N días antes, a las HH:mm" (stepper 0–90) rather than a fixed clock
-  time. `DAILY`/`WEEKDAYS` keep the old "hora del día" reminder shape
-  since they have no date to offset from. For `MONTHLY` with several
-  days picked, one shared set of reminders applies to all of them —
-  not configured per individual date.
-- Notification message becomes a free-text field per task (not per
-  notification), defaulting to the task title verbatim if left blank
-  (no auto-appended suffix — explicitly rejected by the owner).
-- `SIMPLE`/`LOGGED` tracking types are **redefined**, not just
-  renamed: `SIMPLE` becomes "notification only" and drops out of the
-  Progress tab entirely (today both types show streak/heatmap).
-  `LOGGED` (renamed "Compuesto" in the UI) is the only type with
-  history/progress, and itself branches into two confirm styles:
-  slide-to-confirm (replacing the current plain "Confirmar" button,
-  no fields) or a **user-defined custom form** (field builder: name +
-  type per field — Texto/Número/Sí-No/Fecha/Hora/Opciones — plus a
-  "Múltiple (grupo)" type whose fields repeat N times per confirmation,
-  e.g. a "Comidas" group with Nombre+Calorías sub-fields and an "Agregar
-  otra comida" button). This replaces today's hardcoded single
-  `value`+`note` pair on `TaskCompletion`.
-- Data model for the field builder / repeatable groups / per-task
-  message was **not** designed yet — that's explicitly deferred to a
-  technical-design pass (see "Fuera de alcance" in the plan doc), not an
-  oversight.
+**Data model** (`prisma/schema.prisma`, migration
+`20260723174531_redesign_recordatorios`): `TrackingType` enum renamed
+`SIMPLE`/`LOGGED` → `SIMPLE`/`COMPOUND` (existing `LOGGED` rows mapped to
+`COMPOUND` in the migration's `USING` clause, not a bare cast — a bare
+`::text::TrackingType_new` cast would have failed on real `LOGGED` rows).
+New `ConfirmMode` enum (`SLIDER`/`FORM`). `Task` gained `dueHasTime`
+(bool), `message` (free-text push override, null = use title verbatim),
+`confirmMode`, `formSchema` (Json, see `src/lib/form-schema.ts`'s
+`FormFieldDef[]` — one level of nesting only, a `GROUP` field can't
+contain another `GROUP`). `TaskNotification.sendAt` was dropped entirely
+and replaced by `daysBefore` (Int?) — paired with the existing
+`timeOfDay`, `daysBefore == null` means the old "hora del día" shape
+(DAILY/WEEKDAYS), `daysBefore != null` means "N days before the
+occurrence, at HH:mm" (Una vez/MONTHLY). `TaskCompletion.note`/`.value`
+were dropped and replaced by a single `data Json?` keyed by field id from
+`formSchema` (a `GROUP` field's value is an array of per-instance
+objects). Applied via the same TCP-blocked-so-use-HTTP workaround
+documented below (third time this pattern's been used on this project) —
+`prisma migrate diff --from-schema <old> --to-schema <new> --script`,
+then `@neondatabase/serverless`'s `neon()` HTTP driver run
+statement-by-statement (no `BEGIN`/`COMMIT` — Neon's plain HTTP tag
+function is one-shot per call, doesn't hold a session across calls, so a
+multi-statement transaction block wouldn't have been atomic anyway; each
+DDL statement here is already atomic on its own).
+
+**Recurrence** (`src/lib/recurrence.ts`): cut from 6 types to 4 —
+`INTERVAL` and `YEARLY` are gone from the `Recurrence` union entirely
+(the old JSON shapes for them, if any exist in stale rows, fail closed
+via a `default: return false` in `isTaskDueOn`'s switch rather than
+throwing). `MONTHLY` is now `{ days: number[]; lastDay: boolean }` —
+multi-day-of-month plus an explicit "último día del mes" flag, kept
+deliberately separate from picking the number 31 (researched what
+ClickUp/Outlook/Google Calendar do here — see the plan doc — landed on
+"both as separate options": picking 31 skips months without it (Feb),
+`lastDay` always fires on the real last day, 28–31 as applicable). New
+`isOccurrenceDueOn(task, date)` unifies the recurring-task check with the
+one-off ("Una vez") `dueDate` check that used to live duplicated in
+`src/lib/tasks.ts` and `(app)/page.tsx`.
+
+**Reminders**: `Task.dueDate` (Una vez) and `Task.recurrence.days`
+(MONTHLY) are dates; the reminder itself is a separate concept — for
+these two, `daysBefore` (stepper, max 90) + `timeOfDay` means "N days
+before, at HH:mm" (0 = same day). For MONTHLY with several days picked,
+one shared set of reminders applies to every date, not configured per
+individual day. DAILY/WEEKDAYS keep the plain "hora del día" shape since
+there's no date to offset from. The cron sweep
+(`src/app/api/cron/reminders/route.ts`) computes this by projecting
+`addDays(now, daysBefore)` forward and checking whether the task is due
+on that projected date (`isNotificationDayDue` helper) — no need to
+enumerate future occurrences.
+
+**Tracking type, redefined not just renamed**: `SIMPLE` = notification
+only, no `TaskCompletion` ever created for it, excluded from the
+Progress tab (`progress-view.tsx` filters `trackingType === "COMPOUND"`
+before querying). `COMPOUND` is the only type with history/progress, and
+branches into two confirm UIs chosen at creation
+(`confirmMode`):
+- **SLIDER** — `src/components/ui/slide-to-confirm.tsx`, a real
+  drag-to-confirm control (pointer events + `ResizeObserver` for the
+  track width, not read from a ref during render — that trips an
+  eslint-plugin-react-hooks rule about accessing refs in render).
+  Keyboard-accessible via `role="slider"` + Enter/Space, since a
+  drag-only control would otherwise be unusable without a pointer.
+- **FORM** — a user-defined field builder
+  (`recordatorios/field-builder.tsx`) at task-creation time: add fields,
+  each with a name + type (Texto/Número/Sí-No/Fecha/Hora/Opciones/
+  Múltiple-grupo). A `GROUP` field embeds its own mini sub-field builder
+  and, at confirm time (`recordatorios/dynamic-confirm-form.tsx`), renders
+  as a repeatable card stack — "Agregar otro/a `<nombre del grupo>`" — one
+  object per instance in the stored JSON array. Task-list quick-complete
+  for `FORM` tasks is a "Completar" link to the new
+  `recordatorios/completar/[taskId]` route (reuses the same
+  `ConfirmScreen`/`DynamicConfirmForm` as the push-notification confirm
+  screen at `recordatorios/confirmar/[notificationId]`, just without a
+  `notificationId` in the URL) rather than a bare checkbox, since there's
+  no sensible one-tap "done" for a task that needs field values.
+- `requireConfirmation` on a `SIMPLE` task's notification is accepted by
+  the schema but the cron sweep only opens the confirm-screen deep link
+  when `task.trackingType === "COMPOUND"` — a `SIMPLE` task's push always
+  opens the plain app (`opensConfirm` check in the cron route), since
+  there is nothing to persist for it.
+
+**Message field**: `Task.message` free-text, shown in "Más opciones" on
+the task form with the confirm-mode/recurrence pickers surfaced higher up
+(unlike the mockups' "Seguimiento" being on its own screen — folded into
+the single scrolling create form here, still ordered
+Título→Repetición→Avisos→Seguimiento→Más opciones so the now-more-
+consequential tracking-type choice isn't buried). Cron sweep uses
+`task.message?.trim() || task.title` as the push payload's `title` field
+(unchanged `body` = `task.description` fallback) — empty message means
+"exactly the task title," no auto-appended suffix, per explicit owner
+feedback ("título nadamás") during the design conversation.
+
+**Verification**: `npx tsc --noEmit`, `npx eslint src/`, and `npx next
+build` all clean. Pure recurrence/streak logic (`MONTHLY` multi-day,
+`lastDay` vs. picking 31 explicitly, one-off `isOccurrenceDueOn`, daily
+streak counting) checked with a throwaway `npx tsx` script against
+`src/lib/recurrence.ts` directly — not through the DB. **Full
+authenticated runtime testing (actually creating a task through the new
+form, receiving a real push, tapping through to the slider/form confirm
+screens) could not be done from this cloud session** — same blocker as
+every prior DB-touching feature here: `pg`/`@prisma/adapter-pg` need raw
+TCP to Postgres (port 5432), which this session's proxy blocks even
+though it happily tunnels the HTTPS-based migration workaround. Treat the
+UI as build-clean and logic-verified, not as device-tested — same caveat
+that applied to the original Recordatorios ship on 2026-07-22.
 
 ## PWA UI polish — 2026-07-22
 

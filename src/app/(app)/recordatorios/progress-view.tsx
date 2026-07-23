@@ -2,21 +2,16 @@
 
 import { subDays } from "date-fns";
 import { motion } from "motion/react";
-import { Line, LineChart, CartesianGrid, XAxis } from "recharts";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
 import { computeStreak, dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
+import type { FormFieldDef, FormValues } from "@/lib/form-schema";
 
 export type ProgressTask = {
   id: string;
   title: string;
   recurrence: Recurrence;
-  trackingType: "SIMPLE" | "LOGGED";
-  completions: { forDate: string; value: number | null }[];
+  confirmMode: "SLIDER" | "FORM" | null;
+  formSchema: FormFieldDef[] | null;
+  completions: { forDate: string; data: FormValues | null }[];
 };
 
 const HEATMAP_DAYS = 30;
@@ -68,28 +63,45 @@ function Heatmap({
   );
 }
 
-const chartConfig = {
-  value: { label: "Valor", color: "var(--chart-1)" },
-} satisfies ChartConfig;
+/** One-line human summary of a FORM completion's data, for the recent-entries list. */
+function summarizeCompletion(schema: FormFieldDef[], data: FormValues | null): string {
+  if (!data) return "Confirmado";
+  const parts: string[] = [];
+  for (const field of schema) {
+    const value = data[field.id];
+    if (value == null) continue;
+    if (field.type === "GROUP") {
+      const count = Array.isArray(value) ? value.length : 0;
+      if (count > 0) parts.push(`${field.name} ×${count}`);
+    } else {
+      parts.push(`${field.name}: ${value}`);
+    }
+  }
+  return parts.length > 0 ? parts.join(" · ") : "Confirmado";
+}
 
-function ValueChart({ completions }: { completions: ProgressTask["completions"] }) {
-  const data = completions
-    .filter((c) => c.value != null)
-    .sort((a, b) => a.forDate.localeCompare(b.forDate))
-    .slice(-30)
-    .map((c) => ({ date: c.forDate.slice(5), value: c.value }));
+function RecentEntries({
+  schema,
+  completions,
+}: {
+  schema: FormFieldDef[];
+  completions: ProgressTask["completions"];
+}) {
+  const recent = [...completions]
+    .sort((a, b) => b.forDate.localeCompare(a.forDate))
+    .slice(0, 5);
 
-  if (data.length === 0) return null;
+  if (recent.length === 0) return null;
 
   return (
-    <ChartContainer config={chartConfig} className="h-32 w-full">
-      <LineChart data={data}>
-        <CartesianGrid vertical={false} />
-        <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={10} />
-        <ChartTooltip content={<ChartTooltipContent />} />
-        <Line dataKey="value" stroke="var(--color-value)" strokeWidth={2} dot={false} />
-      </LineChart>
-    </ChartContainer>
+    <ul className="flex flex-col gap-1.5 border-t border-black/10 pt-3 dark:border-white/10">
+      {recent.map((c) => (
+        <li key={c.forDate} className="flex items-baseline justify-between gap-3 text-xs">
+          <span className="shrink-0 text-muted-foreground">{c.forDate}</span>
+          <span className="truncate text-right">{summarizeCompletion(schema, c.data)}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -112,7 +124,9 @@ function ProgressCard({ task, index }: { task: ProgressTask; index: number }) {
         </div>
       </div>
       <Heatmap recurrence={task.recurrence} completedDateKeys={completedDateKeys} />
-      {task.trackingType === "LOGGED" && <ValueChart completions={task.completions} />}
+      {task.confirmMode === "FORM" && (
+        <RecentEntries schema={task.formSchema ?? []} completions={task.completions} />
+      )}
     </motion.div>
   );
 }
@@ -121,7 +135,7 @@ export function ProgressView({ tasks }: { tasks: ProgressTask[] }) {
   if (tasks.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        Todavía no hay tareas recurrentes para mostrar progreso.
+        Todavía no hay recordatorios compuestos recurrentes para mostrar progreso.
       </p>
     );
   }

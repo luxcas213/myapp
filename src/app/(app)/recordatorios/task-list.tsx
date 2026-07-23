@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Flame, Pencil, Trash2 } from "lucide-react";
+import { Check, Flame, ListChecks, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { computeStreak, dateKey, type Recurrence } from "@/lib/recurrence";
 export type ListedTask = {
   id: string;
   title: string;
-  trackingType: "SIMPLE" | "LOGGED";
+  trackingType: "SIMPLE" | "COMPOUND";
+  confirmMode: "SLIDER" | "FORM" | null;
   dueDate: string | null;
   recurrence: Recurrence | null;
   tags: { name: string }[];
@@ -26,6 +27,8 @@ function TaskRow({ task, todayKey }: { task: ListedTask; todayKey: string }) {
   const streak = task.recurrence
     ? computeStreak(task.recurrence, new Set(task.completedDateKeys))
     : null;
+  const isCompound = task.trackingType === "COMPOUND";
+  const isFormMode = isCompound && task.confirmMode === "FORM";
 
   function toggle() {
     startTransition(async () => {
@@ -54,32 +57,50 @@ function TaskRow({ task, todayKey }: { task: ListedTask; todayKey: string }) {
       transition={{ duration: 0.18 }}
       className="flex items-center gap-3 rounded-lg border border-black/10 bg-white px-4 py-3 dark:border-white/10 dark:bg-zinc-900"
     >
-      <motion.button
-        whileTap={{ scale: 0.85 }}
-        aria-label={task.doneToday ? "Marcar no hecho" : "Marcar hecho"}
-        aria-pressed={task.doneToday}
-        disabled={isPending}
-        onClick={toggle}
-        className={
-          "flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors " +
-          (task.doneToday
-            ? "border-foreground bg-foreground text-background"
-            : "border-black/20 dark:border-white/20")
-        }
-      >
-        <AnimatePresence>
-          {task.doneToday && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 25 }}
-            >
-              <Check className="size-4" />
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </motion.button>
+      {!isCompound ? (
+        <div className="flex size-6 shrink-0 items-center justify-center text-zinc-300 dark:text-zinc-700">
+          <ListChecks className="size-4" />
+        </div>
+      ) : isFormMode ? (
+        <div
+          aria-label={task.doneToday ? "Completado hoy" : "Sin completar hoy"}
+          className={
+            "flex size-6 shrink-0 items-center justify-center rounded-full border " +
+            (task.doneToday
+              ? "border-foreground bg-foreground text-background"
+              : "border-black/20 dark:border-white/20")
+          }
+        >
+          {task.doneToday && <Check className="size-4" />}
+        </div>
+      ) : (
+        <motion.button
+          whileTap={{ scale: 0.85 }}
+          aria-label={task.doneToday ? "Marcar no hecho" : "Marcar hecho"}
+          aria-pressed={task.doneToday}
+          disabled={isPending}
+          onClick={toggle}
+          className={
+            "flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors " +
+            (task.doneToday
+              ? "border-foreground bg-foreground text-background"
+              : "border-black/20 dark:border-white/20")
+          }
+        >
+          <AnimatePresence>
+            {task.doneToday && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 25 }}
+              >
+                <Check className="size-4" />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      )}
 
       <div className="min-w-0 flex-1">
         <p
@@ -103,6 +124,14 @@ function TaskRow({ task, todayKey }: { task: ListedTask; todayKey: string }) {
               {t.name}
             </Badge>
           ))}
+          {isFormMode && !task.doneToday && (
+            <Link
+              href={`/recordatorios/completar/${task.id}`}
+              className="text-xs font-medium text-foreground underline underline-offset-2"
+            >
+              Completar
+            </Link>
+          )}
         </div>
       </div>
 

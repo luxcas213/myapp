@@ -8,17 +8,19 @@ notifications (registrada pero sin uso real todavía).
 Fuera de alcance de esta etapa (queda para después): gestión financiera
 (gastos, ingresos, suscripciones) — ver "Roadmap general" al final.
 
-> **Este documento describe el diseño ACTUALIZADO (2026-07-23), todavía
-> no implementado.** La versión implementada el 2026-07-22 (ver
-> `CLAUDE.md`) es más simple/genérica que lo que sigue: recurrencia con
-> 6 tipos incluyendo `INTERVAL`/`YEARLY`, tipo de seguimiento
-> `SIMPLE`/`LOGGED` con racha+heatmap para ambos, y un formulario de
-> creación denso con todo siempre visible. Este doc ya refleja el
-> rediseño acordado (mockups iterados con el owner, ver
-> `docs/mockups/recordatorios/`), que hay que construir — no es una
-> descripción de lo que ya existe en el código. Ver la sección
-> "Rediseño 2026-07-23" más abajo para el resumen de qué cambia y por
-> qué.
+> **Este documento describe el diseño ACTUALIZADO (2026-07-23), ya
+> implementado el mismo día** (ver `CLAUDE.md`, sección "Recordatorios
+> redesign — implemented 2026-07-23", para el detalle técnico de la
+> migración y los archivos tocados). Reemplaza por completo la versión
+> del 2026-07-22 (recurrencia con 6 tipos incluyendo `INTERVAL`/`YEARLY`,
+> `SIMPLE`/`LOGGED` con racha+heatmap para ambos, formulario denso con
+> todo siempre visible) — esa versión ya no existe en el código. Los
+> mockups en `docs/mockups/recordatorios/` se conservan como referencia
+> visual de cómo se llegó a este diseño, no como algo pendiente. Ver la
+> sección "Rediseño 2026-07-23" más abajo para el resumen de qué cambió y
+> por qué. **Pendiente:** probar el flujo real en un dispositivo — esta
+> sesión no pudo hacer testing autenticado end-to-end (ver el gotcha de
+> TCP bloqueado en `CLAUDE.md`).
 
 ## Por qué esto y no otra cosa
 
@@ -308,8 +310,9 @@ Decisiones tomadas, en orden:
    comidas con nombre+calorías cada una, en la misma confirmación).
 
 Este documento (secciones de arriba) ya está actualizado con el
-resultado final de todas estas decisiones — es el que hay que seguir
-para implementar, no la versión de código que existe hoy.
+resultado final de todas estas decisiones, y esas decisiones **ya están
+implementadas** en el código (mismo día, vía `/goal`) — ver `CLAUDE.md`
+para el detalle técnico (migración, archivos nuevos/reescritos).
 
 ## Fuera de alcance de esta etapa (asunciones a confirmar más adelante)
 
@@ -323,19 +326,23 @@ porque no bloquean el diseño de esta etapa:
 - ¿Las etiquetas son compartidas entre Notas y Recordatorios, o cada
   sección tiene las suyas?
 - Tareas **Simples** y el switch de "pedir confirmación" por aviso:
-  ¿tiene sentido ofrecerlo si no hay nada que guardar, o se saca el
-  switch directamente para este tipo? (ver nota en "Notificación"
-  arriba).
+  resuelto en la implementación — el switch sigue existiendo en el
+  schema, pero el sweep de cron solo abre la pantalla de confirmación
+  cuando la tarea es Compuesta; en una Simple el push abre la app
+  normal sin importar el switch, porque no hay nada que persistir.
 - Modelo de datos para el constructor de campos libre y el tipo
-  "Múltiple (grupo)": cómo se guarda un esquema de campos por tarea y
-  sus valores por confirmación (¿JSON genérico en `Task` +
-  `TaskCompletion`, tabla nueva?) — pendiente de la etapa técnica,
-  todavía no discutida con el owner.
+  "Múltiple (grupo)": **resuelto e implementado** — `Task.formSchema`
+  (JSON, `FormFieldDef[]` en `src/lib/form-schema.ts`, un solo nivel de
+  anidamiento) + `TaskCompletion.data` (JSON, valores por id de campo;
+  un campo `GROUP` guarda un array de objetos, uno por repetición). Ver
+  `CLAUDE.md` para el detalle completo.
 - Cómo migran los datos/tareas ya creadas con el modelo viejo
-  (`INTERVAL`/`YEARLY`, `LOGGED` con value+note fijo) al modelo nuevo
-  — no se discutió si hay que migrar data real o si se puede recrear
-  desde cero (la app tiene un solo usuario real, así que puede no
-  hacer falta una migración cuidadosa).
+  (`INTERVAL`/`YEARLY`, `LOGGED` con value+note fijo) al modelo nuevo:
+  resuelto — se migraron las filas `LOGGED` existentes a `COMPOUND` con
+  `confirmMode = SLIDER` (no había concepto de formulario antes, así que
+  no hay nada que mapear a `formSchema`); filas con recurrencia
+  `INTERVAL`/`YEARLY` quedan con datos obsoletos en la columna JSON,
+  pero `isTaskDueOn` las trata como "nunca vence" en vez de romper.
 
 ## Roadmap general (para ubicar esta etapa en el panorama completo)
 

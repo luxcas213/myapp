@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getAllTags } from "@/lib/tasks";
 import type { Recurrence } from "@/lib/recurrence";
+import type { FormFieldDef } from "@/lib/form-schema";
 import { TaskForm } from "../../task-form";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +39,12 @@ export default async function EditarTareaPage({
             id: task.id,
             title: task.title,
             description: task.description,
+            message: task.message,
             trackingType: task.trackingType,
+            confirmMode: task.confirmMode,
+            formSchema: task.formSchema as FormFieldDef[] | null,
             dueDate: task.dueDate,
+            dueHasTime: task.dueHasTime,
             recurrence: task.recurrence as Recurrence | null,
             tags: task.tags,
             notifications: task.notifications,

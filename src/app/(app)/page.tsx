@@ -27,6 +27,7 @@ export default async function HomePage() {
       id: task.id,
       title: task.title,
       trackingType: task.trackingType,
+      confirmMode: task.confirmMode,
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
       recurrence,
       tags: task.tags,

@@ -3,8 +3,8 @@ import {
   format,
   getDate,
   getDay,
-  getMonth,
-  isBefore,
+  getDaysInMonth,
+  isSameDay,
   startOfDay,
   subDays,
 } from "date-fns";
@@ -12,9 +12,7 @@ import {
 export type Recurrence =
   | { type: "DAILY" }
   | { type: "WEEKDAYS"; days: number[] } // 0 = Sunday .. 6 = Saturday
-  | { type: "INTERVAL"; unit: "DAY" | "WEEK"; n: number; anchor: string } // anchor: ISO date string
-  | { type: "MONTHLY"; day: number } // 1-31
-  | { type: "YEARLY"; month: number; day: number }; // month: 1-12
+  | { type: "MONTHLY"; days: number[]; lastDay: boolean }; // days: 1-31 picks; lastDay: also fires on the real last day of the month (28-31), independent of picking 31 itself
 
 const DATE_KEY = "yyyy-MM-dd";
 
@@ -31,18 +29,30 @@ export function isTaskDueOn(recurrence: Recurrence, date: Date): boolean {
       return true;
     case "WEEKDAYS":
       return recurrence.days.includes(getDay(day));
-    case "INTERVAL": {
-      const anchor = startOfDay(new Date(recurrence.anchor));
-      if (isBefore(day, anchor)) return false;
-      const diffDays = differenceInCalendarDays(day, anchor);
-      const stepDays = recurrence.unit === "WEEK" ? recurrence.n * 7 : recurrence.n;
-      return diffDays % stepDays === 0;
+    case "MONTHLY": {
+      const dayOfMonth = getDate(day);
+      if (recurrence.lastDay && dayOfMonth === getDaysInMonth(day)) return true;
+      return (recurrence.days ?? []).includes(dayOfMonth);
     }
-    case "MONTHLY":
-      return getDate(day) === recurrence.day;
-    case "YEARLY":
-      return getMonth(day) + 1 === recurrence.month && getDate(day) === recurrence.day;
+    default:
+      // Guards against stale data from a dropped recurrence type (e.g. the
+      // old INTERVAL/YEARLY shapes) — treat as never due rather than throw.
+      return false;
   }
+}
+
+/**
+ * Whether a task — recurring OR one-off ("Una vez", a plain `dueDate`) —
+ * has an occurrence scheduled on `date`. Recurring tasks defer to
+ * `isTaskDueOn`; one-off tasks match their single `dueDate` day exactly.
+ */
+export function isOccurrenceDueOn(
+  task: { recurrence: Recurrence | null; dueDate: Date | null },
+  date: Date
+): boolean {
+  if (task.recurrence) return isTaskDueOn(task.recurrence, date);
+  if (task.dueDate) return isSameDay(task.dueDate, date);
+  return false;
 }
 
 export type Streak = { current: number; longest: number };
@@ -94,4 +104,9 @@ export function computeStreak(
   }
 
   return { current, longest };
+}
+
+/** Calendar days between `from` and `to` (can be negative). */
+export function daysBetween(from: Date, to: Date): number {
+  return differenceInCalendarDays(startOfDay(to), startOfDay(from));
 }

@@ -7,6 +7,7 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { getActiveTasks } from "@/lib/tasks";
 import { dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
 import { prisma } from "@/lib/prisma";
+import type { FormFieldDef, FormValues } from "@/lib/form-schema";
 import { TaskList, type ListedTask } from "./task-list";
 import { ProgressView, type ProgressTask } from "./progress-view";
 import { HistoryView, type PastTask } from "./history-view";
@@ -43,6 +44,7 @@ export default async function RecordatoriosPage() {
       id: task.id,
       title: task.title,
       trackingType: task.trackingType,
+      confirmMode: task.confirmMode,
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
       recurrence,
       tags: task.tags,
@@ -63,15 +65,16 @@ export default async function RecordatoriosPage() {
   }
 
   const progressTasks: ProgressTask[] = activeTasks
-    .filter((t) => t.recurrence != null)
+    .filter((t) => t.recurrence != null && t.trackingType === "COMPOUND")
     .map((t) => ({
       id: t.id,
       title: t.title,
       recurrence: t.recurrence as Recurrence,
-      trackingType: t.trackingType,
+      confirmMode: t.confirmMode,
+      formSchema: t.formSchema as FormFieldDef[] | null,
       completions: t.completions.map((c) => ({
         forDate: dateKey(c.forDate),
-        value: c.value,
+        data: c.data as FormValues | null,
       })),
     }));
 

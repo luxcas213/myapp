@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { dateKey } from "@/lib/recurrence";
-import { confirmFromNotification } from "../../actions";
-import { ConfirmForm } from "./confirm-form";
+import { confirmFromNotification, confirmFromNotificationWithData } from "../../actions";
+import { ConfirmScreen } from "../../confirm-screen";
+import type { FormFieldDef } from "@/lib/form-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -21,19 +22,20 @@ export default async function ConfirmarPage({
   if (!notification) notFound();
 
   const today = dateKey(new Date());
-  const confirm = confirmFromNotification.bind(
-    null,
-    notification.task.id,
-    today,
-    notification.id
-  );
+  const task = notification.task;
+  const confirmMode = task.confirmMode ?? "SLIDER";
+
+  const onConfirm = confirmFromNotification.bind(null, task.id, today, notification.id);
+  const onSubmitForm = confirmFromNotificationWithData.bind(null, task.id, today, notification.id);
 
   return (
-    <ConfirmForm
-      title={notification.task.title}
-      description={notification.task.description}
-      logged={notification.task.trackingType === "LOGGED"}
-      action={confirm}
+    <ConfirmScreen
+      title={task.title}
+      description={task.description}
+      confirmMode={confirmMode}
+      formSchema={(task.formSchema as FormFieldDef[] | null) ?? []}
+      onConfirm={onConfirm}
+      onSubmitForm={onSubmitForm}
     />
   );
 }

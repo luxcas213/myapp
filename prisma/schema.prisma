@@ -49,24 +49,46 @@ model PushSubscription {
   createdAt DateTime @default(now())
 }
 
+// SIMPLE: notification only, no history/progress at all. COMPOUND: has
+// history/progress (streak, heatmap), confirmed via `confirmMode`.
 enum TrackingType {
   SIMPLE
-  LOGGED
+  COMPOUND
 }
 
-// A reminder/to-do item. One-off (dueDate set, recurrence null) or recurring
-// (recurrence set, dueDate null). `recurrence` is a small JSON descriptor —
-// e.g. {"type":"DAILY"} | {"type":"WEEKDAYS","days":[1,3,5]} |
-// {"type":"INTERVAL","unit":"DAY","n":3} | {"type":"MONTHLY","day":5} |
-// {"type":"YEARLY","month":3,"day":15} — matched by a pure function in
-// application code, not queried at the DB level (personal-app data volume).
+// Only meaningful when trackingType = COMPOUND. SLIDER: plain confirm, no
+// fields. FORM: renders `Task.formSchema` dynamically (see below).
+enum ConfirmMode {
+  SLIDER
+  FORM
+}
+
+// A reminder/to-do item. One-off ("Una vez": dueDate set, recurrence null)
+// or recurring (recurrence set, dueDate null). `recurrence` is a small JSON
+// descriptor — e.g. {"type":"DAILY"} | {"type":"WEEKDAYS","days":[1,3,5]} |
+// {"type":"MONTHLY","days":[1,15],"lastDay":true} — matched by a pure
+// function in application code (`src/lib/recurrence.ts`), not queried at the
+// DB level (personal-app data volume). `INTERVAL`/`YEARLY` recurrence types
+// from the original design were dropped entirely in the 2026-07-23 redesign.
 model Task {
   id           String       @id @default(cuid())
   title        String
   description  String?
   trackingType TrackingType @default(SIMPLE)
+  // "Una vez" only: the event's date. `dueHasTime` says whether `dueDate`
+  // also carries a meaningful time-of-day (event has a specific hour) or is
+  // just a calendar day (time part is midnight, ignored).
   dueDate      DateTime?
+  dueHasTime   Boolean      @default(false)
   recurrence   Json?
+  // Free-text push body. Null/empty means "use the title verbatim" — no
+  // auto-generated suffix (explicitly rejected by the owner).
+  message      String?
+  // COMPOUND only. Ignored for SIMPLE.
+  confirmMode  ConfirmMode?
+  // COMPOUND + FORM only: an array of FormFieldDef (see
+  // src/lib/form-schema.ts) describing the fields to render on confirm.
+  formSchema   Json?
   active       Boolean      @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -82,8 +104,13 @@ model Tag {
   tasks Task[]
 }
 
-// One alert config per Task; a Task can have several. `timeOfDay` (minutes
-// since midnight) drives recurring tasks, `sendAt` drives one-off tasks.
+// One alert config per Task; a Task can have several. Which fields apply
+// depends on the task's recurrence:
+// - DAILY/WEEKDAYS (no date): `timeOfDay` (minutes since midnight) is the
+//   only thing that matters — fires at that time on each due day.
+// - Una vez/MONTHLY (has a date): `daysBefore` (0-90) + `timeOfDay` together
+//   mean "N days before the occurrence, at HH:mm". For MONTHLY, this same
+//   pair applies uniformly to every day-of-month configured on the task.
 // `lastFiredForDate` is the dedupe guard so a sweep that runs every few
 // minutes doesn't resend the same day's alert twice.
 model TaskNotification {
@@ -92,25 +119,26 @@ model TaskNotification {
   task                Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
   requireConfirmation Boolean   @default(false)
   timeOfDay           Int?
-  sendAt              DateTime?
+  daysBefore          Int?
   lastFiredForDate    DateTime? @db.Date
   createdAt           DateTime  @default(now())
 
   @@index([taskId])
 }
 
-// A logged completion of one occurrence of a Task. For SIMPLE tasks this is
-// just the done-marker for that date; for LOGGED tasks it also carries the
-// optional note/value (same shape as TrackerEntry, scoped to a task instead
-// of a freeform `kind`). One row per task per occurrence date.
+// A logged completion of one occurrence of a Task. Only ever created for
+// COMPOUND tasks (SIMPLE has no history to record). For confirmMode=SLIDER
+// `data` is null (existence of the row is the done-marker); for
+// confirmMode=FORM, `data` holds the submitted values keyed by field id from
+// `Task.formSchema` — a GROUP field's value is an array of per-instance
+// objects (see src/lib/form-schema.ts). One row per task per occurrence date.
 model TaskCompletion {
   id          String   @id @default(cuid())
   taskId      String
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   forDate     DateTime @db.Date
   completedAt DateTime @default(now())
-  note        String?
-  value       Float?
+  data        Json?
 
   @@unique([taskId, forDate])
 }

@@ -1,6 +1,5 @@
-import { isSameDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
+import { dateKey, isOccurrenceDueOn, type Recurrence } from "@/lib/recurrence";
 
 export type TaskWithState = Awaited<ReturnType<typeof getActiveTasks>>[number];
 
@@ -25,9 +24,10 @@ export function isDueOn(
   task: Pick<TaskWithState, "recurrence" | "dueDate">,
   date: Date
 ): boolean {
-  if (task.recurrence) return isTaskDueOn(task.recurrence as Recurrence, date);
-  if (task.dueDate) return isSameDay(task.dueDate, date);
-  return false;
+  return isOccurrenceDueOn(
+    { recurrence: task.recurrence as Recurrence | null, dueDate: task.dueDate },
+    date
+  );
 }
 
 export function isDoneOn(
