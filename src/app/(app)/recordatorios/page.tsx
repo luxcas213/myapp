@@ -2,16 +2,16 @@ import Link from "next/link";
 import { isSameDay } from "date-fns";
 import { Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getActiveTasks } from "@/lib/tasks";
 import { dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
 import { prisma } from "@/lib/prisma";
 import type { FormFieldDef, FormValues } from "@/lib/form-schema";
 import { appNow } from "@/lib/timezone";
-import { TaskList, type ListedTask } from "./task-list";
-import { ProgressView, type ProgressTask } from "./progress-view";
-import { HistoryView, type PastTask } from "./history-view";
+import type { ListedTask } from "./task-list";
+import type { ProgressTask } from "./progress-view";
+import type { PastTask } from "./history-view";
+import { RecordatoriosTabs } from "./tabs-view";
 
 export const dynamic = "force-dynamic";
 
@@ -98,22 +98,13 @@ export default async function RecordatoriosPage() {
           <Plus className="size-4" /> Nuevo recordatorio
         </Link>
 
-        <Tabs defaultValue="activos">
-          <TabsList>
-            <TabsTrigger value="activos">Activos</TabsTrigger>
-            <TabsTrigger value="progreso">Progreso</TabsTrigger>
-            <TabsTrigger value="historial">Historial</TabsTrigger>
-          </TabsList>
-          <TabsContent value="activos">
-            <TaskList hoy={hoy} proximas={proximas} sinFecha={sinFecha} />
-          </TabsContent>
-          <TabsContent value="progreso">
-            <ProgressView tasks={progressTasks} />
-          </TabsContent>
-          <TabsContent value="historial">
-            <HistoryView tasks={pastTasks} />
-          </TabsContent>
-        </Tabs>
+        <RecordatoriosTabs
+          hoy={hoy}
+          proximas={proximas}
+          sinFecha={sinFecha}
+          progressTasks={progressTasks}
+          pastTasks={pastTasks}
+        />
       </main>
     </div>
   );

@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { prisma } from "@/lib/prisma";
 import { getAllTags } from "@/lib/tasks";
 import type { Recurrence } from "@/lib/recurrence";
@@ -28,9 +27,7 @@ export default async function EditarTareaPage({
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
       <header className="flex items-center gap-3 border-b border-black/10 px-4 py-4 dark:border-white/10">
-        <Link href="/recordatorios" aria-label="Volver">
-          <ChevronLeft className="size-5" />
-        </Link>
+        <BackLink href="/recordatorios" />
         <h1 className="text-lg font-semibold">Editar recordatorio</h1>
       </header>
       <main className="mx-auto w-full max-w-lg flex-1">

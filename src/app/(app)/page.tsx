@@ -1,6 +1,7 @@
 import { isSameDay } from "date-fns";
 import { SignOutButton } from "@/components/sign-out-button";
 import { PushManager } from "@/components/push-manager";
+import { StaggerIn, StaggerItem } from "@/components/stagger-in";
 import { getActiveTasks } from "@/lib/tasks";
 import { dateKey, isTaskDueOn, type Recurrence } from "@/lib/recurrence";
 import { appNow } from "@/lib/timezone";
@@ -45,18 +46,24 @@ export default async function HomePage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-6">
-        <QuickActions />
+        <StaggerIn className="contents">
+          <StaggerItem>
+            <QuickActions />
+          </StaggerItem>
 
-        <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-muted-foreground">Hoy</h2>
-          {hoy.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No tenés recordatorios para hoy.
-            </p>
-          ) : (
-            <TaskList hoy={hoy} proximas={[]} sinFecha={[]} />
-          )}
-        </section>
+          <StaggerItem>
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-medium text-muted-foreground">Hoy</h2>
+              {hoy.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No tenés recordatorios para hoy.
+                </p>
+              ) : (
+                <TaskList hoy={hoy} proximas={[]} sinFecha={[]} />
+              )}
+            </section>
+          </StaggerItem>
+        </StaggerIn>
 
         <PushManager />
       </main>

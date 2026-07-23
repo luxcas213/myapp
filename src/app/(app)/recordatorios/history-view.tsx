@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "motion/react";
 import { Check, X } from "lucide-react";
 
 export type PastTask = {
@@ -18,9 +21,12 @@ export function HistoryView({ tasks }: { tasks: PastTask[] }) {
 
   return (
     <ul className="flex flex-col gap-2">
-      {tasks.map((t) => (
-        <li
+      {tasks.map((t, i) => (
+        <motion.li
           key={t.id}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18, delay: Math.min(i, 10) * 0.03 }}
           className="flex items-center justify-between gap-3 rounded-lg border border-black/10 px-4 py-3 dark:border-white/10"
         >
           <div>
@@ -30,11 +36,17 @@ export function HistoryView({ tasks }: { tasks: PastTask[] }) {
             </p>
           </div>
           {t.done ? (
-            <Check className="size-4 text-green-500" />
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20, delay: 0.1 }}
+            >
+              <Check className="size-4 text-green-500" />
+            </motion.span>
           ) : (
             <X className="size-4 text-red-500" />
           )}
-        </li>
+        </motion.li>
       ))}
     </ul>
   );

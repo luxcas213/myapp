@@ -15,6 +15,7 @@ import { FieldBuilder } from "./field-builder";
 import { PreviewOverlay } from "./preview-overlay";
 import type { Recurrence } from "@/lib/recurrence";
 import type { FormFieldDef } from "@/lib/form-schema";
+import { TAP_SCALE, TAP_SPRING } from "@/lib/motion";
 
 type NotificationRow = {
   key: string;
@@ -69,25 +70,35 @@ function Stepper({
 }) {
   return (
     <div className="flex items-center gap-1 rounded-full border border-black/10 p-1 dark:border-white/10">
-      <button
+      <motion.button
         type="button"
         aria-label="Restar"
+        whileTap={{ scale: TAP_SCALE }}
+        transition={TAP_SPRING}
         onClick={() => onChange(Math.max(0, value - 1))}
-        className="flex size-6 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold dark:bg-zinc-800"
+        className="flex size-6 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold [-webkit-tap-highlight-color:transparent] dark:bg-zinc-800"
       >
         −
-      </button>
-      <span className="w-6 text-center font-mono text-sm font-semibold tabular-nums">
+      </motion.button>
+      <motion.span
+        key={value}
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.12 }}
+        className="w-6 text-center font-mono text-sm font-semibold tabular-nums"
+      >
         {value}
-      </span>
-      <button
+      </motion.span>
+      <motion.button
         type="button"
         aria-label="Sumar"
+        whileTap={{ scale: TAP_SCALE }}
+        transition={TAP_SPRING}
         onClick={() => onChange(Math.min(max, value + 1))}
-        className="flex size-6 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold dark:bg-zinc-800"
+        className="flex size-6 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold [-webkit-tap-highlight-color:transparent] dark:bg-zinc-800"
       >
         +
-      </button>
+      </motion.button>
     </div>
   );
 }
@@ -107,35 +118,39 @@ function MonthDayGrid({
     <div className="flex flex-col gap-2 rounded-lg border border-black/10 p-3 dark:border-white/10">
       <div className="grid grid-cols-7 gap-1.5">
         {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-          <button
+          <motion.button
             key={day}
             type="button"
             aria-pressed={days.includes(day)}
+            whileTap={{ scale: TAP_SCALE }}
+            transition={TAP_SPRING}
             onClick={() => onToggleDay(day)}
             className={
-              "flex aspect-square items-center justify-center rounded-md border font-mono text-xs tabular-nums transition-colors " +
+              "flex aspect-square items-center justify-center rounded-md border font-mono text-xs tabular-nums [-webkit-tap-highlight-color:transparent] transition-colors " +
               (days.includes(day)
                 ? "border-foreground bg-foreground text-background"
                 : "border-black/10 dark:border-white/10")
             }
           >
             {day}
-          </button>
+          </motion.button>
         ))}
       </div>
-      <button
+      <motion.button
         type="button"
         aria-pressed={lastDay}
+        whileTap={{ scale: 0.98 }}
+        transition={TAP_SPRING}
         onClick={onToggleLastDay}
         className={
-          "rounded-md border px-3 py-2 text-xs font-medium transition-colors " +
+          "rounded-md border px-3 py-2 text-xs font-medium [-webkit-tap-highlight-color:transparent] transition-colors " +
           (lastDay
             ? "border-foreground bg-foreground text-background"
             : "border-black/10 dark:border-white/10")
         }
       >
         Último día del mes
-      </button>
+      </motion.button>
     </div>
   );
 }
@@ -355,21 +370,23 @@ export function TaskForm({
             {recurrenceType === "WEEKDAYS" && (
               <div className="flex gap-1.5">
                 {WEEKDAY_LABELS.map((label, i) => (
-                  <button
+                  <motion.button
                     key={i}
                     type="button"
                     aria-pressed={weekdays.includes(i)}
                     aria-label={label}
+                    whileTap={{ scale: TAP_SCALE }}
+                    transition={TAP_SPRING}
                     onClick={() => toggleWeekday(i)}
                     className={
-                      "flex size-9 items-center justify-center rounded-full border text-xs font-semibold transition-colors " +
+                      "flex size-9 items-center justify-center rounded-full border text-xs font-semibold [-webkit-tap-highlight-color:transparent] transition-colors " +
                       (weekdays.includes(i)
                         ? "border-foreground bg-foreground text-background"
                         : "border-black/10 dark:border-white/10")
                     }
                   >
                     {label}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             )}

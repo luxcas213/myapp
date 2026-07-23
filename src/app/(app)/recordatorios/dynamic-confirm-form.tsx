@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { EASE_OUT } from "@/lib/motion";
 import type { FormFieldDef, FormValues } from "@/lib/form-schema";
 
 type ScalarValue = string | number | boolean | null;
@@ -86,11 +88,17 @@ function GroupBlock({
   onChange: (instances: GroupInstance[]) => void;
 }) {
   const subfields = field.fields ?? [];
+  // Stable per-instance keys so AnimatePresence can animate the right card
+  // in/out on add/remove instead of keying off the array index (which
+  // would shift and mis-animate every card after the one removed).
+  const [keys, setKeys] = useState<string[]>(() => instances.map(() => crypto.randomUUID()));
 
   function addInstance() {
+    setKeys((k) => [...k, crypto.randomUUID()]);
     onChange([...instances, {}]);
   }
   function removeInstance(index: number) {
+    setKeys((k) => k.filter((_, i) => i !== index));
     onChange(instances.filter((_, i) => i !== index));
   }
   function updateInstance(index: number, subId: string, v: ScalarValue) {
@@ -100,31 +108,40 @@ function GroupBlock({
   return (
     <div className="flex flex-col gap-3">
       <span className="text-sm font-medium">{field.name}</span>
-      {instances.map((inst, i) => (
-        <div
-          key={i}
-          className="relative flex flex-col gap-3 rounded-lg border border-black/10 p-3 dark:border-white/10"
-        >
-          <button
-            type="button"
-            aria-label={`Eliminar ${field.name}`}
-            onClick={() => removeInstance(i)}
-            className="absolute right-2 top-2 text-zinc-400 hover:text-destructive"
+      <AnimatePresence initial={false}>
+        {instances.map((inst, i) => (
+          <motion.div
+            key={keys[i] ?? i}
+            layout
+            initial={{ opacity: 0, height: 0, scale: 0.96 }}
+            animate={{ opacity: 1, height: "auto", scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.96 }}
+            transition={EASE_OUT}
+            className="overflow-hidden"
           >
-            <X className="size-4" />
-          </button>
-          {subfields.map((sf) => (
-            <div key={sf.id} className="flex flex-col gap-1.5 pr-6">
-              <label className="text-xs font-medium text-muted-foreground">{sf.name}</label>
-              <FieldInput
-                field={sf}
-                value={inst[sf.id] ?? null}
-                onChange={(v) => updateInstance(i, sf.id, v)}
-              />
+            <div className="relative flex flex-col gap-3 rounded-lg border border-black/10 p-3 dark:border-white/10">
+              <button
+                type="button"
+                aria-label={`Eliminar ${field.name}`}
+                onClick={() => removeInstance(i)}
+                className="absolute right-2 top-2 text-zinc-400 hover:text-destructive"
+              >
+                <X className="size-4" />
+              </button>
+              {subfields.map((sf) => (
+                <div key={sf.id} className="flex flex-col gap-1.5 pr-6">
+                  <label className="text-xs font-medium text-muted-foreground">{sf.name}</label>
+                  <FieldInput
+                    field={sf}
+                    value={inst[sf.id] ?? null}
+                    onChange={(v) => updateInstance(i, sf.id, v)}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ))}
+          </motion.div>
+        ))}
+      </AnimatePresence>
       <Button type="button" variant="outline" size="sm" onClick={addInstance} className="w-fit">
         <Plus className="size-4" /> Agregar otro/a {field.name.toLowerCase()}
       </Button>
