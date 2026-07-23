@@ -212,6 +212,17 @@ export async function uncompleteTask(taskId: string, forDate: string) {
   revalidateAll();
 }
 
+/** Slider confirm reached from the task list's "completar" screen (not a push). */
+export async function completeTaskFromScreen(taskId: string, forDate: string) {
+  await prisma.taskCompletion.upsert({
+    where: { taskId_forDate: { taskId, forDate: new Date(forDate) } },
+    create: { taskId, forDate: new Date(forDate) },
+    update: {},
+  });
+  revalidateAll();
+  redirect("/recordatorios");
+}
+
 /** Form-mode confirm, filled directly from the task list (no push involved). */
 export async function completeTaskWithData(taskId: string, forDate: string, data: FormValues) {
   await prisma.taskCompletion.upsert({
