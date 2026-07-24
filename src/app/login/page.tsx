@@ -27,7 +27,7 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-6 bg-zinc-50 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] dark:bg-black">
+    <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-zinc-50 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] dark:bg-black">
       <LoginCard error={!!error} action={login} />
     </main>
   );

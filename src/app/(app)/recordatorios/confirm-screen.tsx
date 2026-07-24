@@ -25,7 +25,7 @@ export function ConfirmScreen({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))]">
+    <main className="flex flex-1 flex-col items-center justify-center gap-6 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))]">
       {confirmMode === "SLIDER" && (
         <motion.div
           initial={{ scale: 0 }}
