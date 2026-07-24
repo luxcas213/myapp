@@ -611,9 +611,16 @@ Two fixes made after actually looking at the app on-device:
   internally instead of the whole document scrolling. Flexbox places the
   nav bar at the true bottom with no viewport-containing-block ambiguity
   left to get wrong. Once fixed positioning was no longer fighting
-  anything, it also became safe to add `pb-[env(safe-area-inset-bottom)]`
-  to the nav bar itself, so its own background fills the home-indicator
-  zone instead of leaving page background visible beneath it.
+  anything, `pb-[env(safe-area-inset-bottom)]` was tried on the nav bar
+  itself (reasoning: fill the home-indicator zone with the bar's own
+  background instead of leaving page background visible beneath it) —
+  **but the owner rejected this on real-device testing** ("Ahora es más
+  grande todavía el espacio. Directamente no tiene que estar" — the
+  padding made the gap bigger, and the ask was zero gap, not a
+  matching-color fill). Removed; `nav-bar.tsx`'s `<nav>` has no bottom
+  safe-area padding at all, confirmed correct on-device. Don't re-add it
+  without the owner asking first — "look native" is not sufficient
+  justification here, they specifically don't want it.
 
 General PWA UI notes worth remembering for future screens (researched,
 not yet all applied beyond the above): follow platform conventions rather
