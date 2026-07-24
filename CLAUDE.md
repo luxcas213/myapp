@@ -105,8 +105,10 @@ Done:
 - Notes CRUD on `src/app/(app)/notas/page.tsx` (moved out of the root page
   when the nav bar was added, see Recordatorios section below —
   `src/app/actions.ts`, `src/components/notes-list.tsx` unchanged)
-- PWA manifest + icons (placeholders — regenerate real ones when you have
-  branding) + iOS meta tags in `src/app/layout.tsx`
+- PWA manifest + icons + iOS meta tags in `src/app/layout.tsx`. Icons
+  (2026-07-23, see "App icon + iOS splash screens" section below) are a
+  generated house glyph, not real branding — regenerate when the owner
+  has an actual logo.
 - Push notification plumbing: `public/sw.js`, `/api/push/subscribe`,
   `/api/push/send` (manual test push to every stored subscription), client
   component `src/components/push-manager.tsx` (now rendered on Home, see
@@ -507,6 +509,46 @@ already run in the owner's own browser, in Argentina time, correctly.
 If this app is ever used from outside Argentina, `appNow()`'s hardcoded
 offset would need to become configurable — not a concern for a
 single-owner app pinned to one timezone.
+
+## App icon + iOS splash screens — 2026-07-23
+
+Replaced the original random placeholder icon (a literal "M") with a
+generated mark, and added iOS splash screens (previously nonexistent —
+iOS doesn't synthesize one from the manifest the way Android does; each
+screen size needs its own explicit image).
+
+- **Icon**: Lucide's `house` path (same glyph as the nav bar's Home tab)
+  drawn as inline SVG and rasterized with `sharp` (already a project
+  dependency, no new package) — white stroke on `#0a0a0a`, the same color
+  already set as `manifest.json`'s `background_color`/`theme_color`.
+  Sized within Android's maskable safe zone (~66% of the canvas) and
+  stroked bolder than Lucide's UI-sized default (`stroke-width` scaled up
+  ~1.3x) so the glyph stays legible at actual home-screen icon size, not
+  just at the 24px UI size it's designed for. Outputs: `icon-192.png`,
+  `icon-512.png`, `apple-touch-icon.png` (180x180, opaque — Apple touch
+  icons can't have transparency, iOS applies its own corner mask).
+- **Splash screens**: 9 PNGs in `public/icons/splash/`, one per
+  representative modern-iPhone viewport (SE, mini, standard, Plus, Pro,
+  Pro Max, 16 Pro, 16 Pro Max, and the older 6.1"@2x class covering
+  XR/11) — not the full historical Apple device matrix, not needed for a
+  personal app. Same `#0a0a0a` background, icon centered. Wired via
+  `metadata.appleWebApp.startupImage` in `src/app/layout.tsx` (Next's
+  built-in field for this — resolves to `<link rel="apple-touch-startup-
+  image" media="...">` tags), each entry's `media` an exact
+  `device-width`/`device-height`/`-webkit-device-pixel-ratio` match per
+  Apple's convention.
+- **Why one fixed background, not per-appearance variants**: researched
+  whether iOS's 18+ light/dark/tinted icon appearances (native apps,
+  configured via Xcode's Icon Composer) extend to PWA/web-clip icons —
+  they don't, as of iOS 26 this is still an open ask on Apple's own
+  developer forums with no documented mechanism. So the single `#0a0a0a`
+  background was chosen specifically to read reasonably on both a light
+  and dark home-screen wallpaper, since it can't adapt.
+- The generation script (`sharp`, inline SVG, ~40 lines) wasn't kept in
+  the repo — regenerate the same way (same house glyph + colors, or a new
+  icon) whenever real branding replaces this placeholder-but-designed
+  mark; both the icons and the splash screens need regenerating together
+  since the splash screens are the icon composited onto a bigger canvas.
 
 ## PWA UI polish — 2026-07-22
 
