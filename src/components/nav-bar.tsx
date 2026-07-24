@@ -16,7 +16,7 @@ export function NavBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="border-t border-black/10 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-white/10 dark:bg-zinc-950/95">
+    <nav className="border-t border-black/10 bg-white/95 backdrop-blur dark:border-white/10 dark:bg-zinc-950/95">
       <ul className="mx-auto flex max-w-lg items-stretch justify-around">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active =
