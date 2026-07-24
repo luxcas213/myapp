@@ -590,13 +590,30 @@ Two fixes made after actually looking at the app on-device:
   needed at all: `(app)/template.tsx`'s `motion.div` (`flex flex-1`) →
   `body` (`min-h-full flex flex-col`) → `html` (`h-full`). Stacking any
   `dvh`/`svh` min-height on top of that was fighting an already-correct
-  size. **Fix that actually stuck**: drop the viewport unit entirely,
-  use `flex-1` on all three so they inherit the parent chain's already-
-  correct height. If a *new* full-screen element isn't inside this flex
-  chain (e.g. a `fixed inset-0` overlay like `preview-overlay.tsx` —
-  those are fine as-is, `inset-0` isn't viewport-unit-based), don't reach
-  for `dvh`/`svh` on it either — check whether it can just join the flex
-  chain first.
+  size. **Fix for the wrapper-height part**: drop the viewport unit
+  entirely, use `flex-1` on all three so they inherit the parent chain's
+  already-correct height. If a *new* full-screen element isn't inside
+  this flex chain (e.g. a `fixed inset-0` overlay like
+  `preview-overlay.tsx` — those are fine as-is, `inset-0` isn't
+  viewport-unit-based), don't reach for `dvh`/`svh` on it either — check
+  whether it can just join the flex chain first.
+- **But the gap below the nav bar persisted even after the above fix** —
+  because it was never a wrapper-height problem. Root cause: `nav-bar.tsx`
+  was `position: fixed`, and iOS has a documented WebKit bug where fixed
+  elements misbehave in standalone PWA mode (Apple developer forums:
+  "iOS17 PWA `position: fixed` element breaks after a while") — no CSS
+  height fix on the ancestors was ever going to touch that, since the bug
+  is in how `fixed`'s viewport-relative containing block gets computed,
+  not in any element's height. **Actual fix**: took the nav bar out of
+  `position: fixed` entirely. It's now a normal last child of `(app)/
+  layout.tsx`'s full-height flex column, with page content wrapped in a
+  `<main className="flex-1 min-h-0 overflow-y-auto ...">` that scrolls
+  internally instead of the whole document scrolling. Flexbox places the
+  nav bar at the true bottom with no viewport-containing-block ambiguity
+  left to get wrong. Once fixed positioning was no longer fighting
+  anything, it also became safe to add `pb-[env(safe-area-inset-bottom)]`
+  to the nav bar itself, so its own background fills the home-indicator
+  zone instead of leaving page background visible beneath it.
 
 General PWA UI notes worth remembering for future screens (researched,
 not yet all applied beyond the above): follow platform conventions rather
