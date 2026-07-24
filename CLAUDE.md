@@ -570,10 +570,33 @@ Two fixes made after actually looking at the app on-device:
   sitting under the clock/battery, nav bar flush against the bottom
   edge). `viewport-fit=cover` was already set in `layout.tsx` but nothing
   used `env(safe-area-inset-*)` to compensate. Fixed by adding
-  `pt-[env(safe-area-inset-top)]` to `(app)/layout.tsx`'s wrapper,
-  `pb-[env(safe-area-inset-bottom)]` to `nav-bar.tsx`, and matching
-  padding on the login page. Any new fixed/full-bleed element added later
-  needs the same treatment — it's not automatic.
+  `pt-[env(safe-area-inset-top)]` to `(app)/layout.tsx`'s wrapper and
+  matching top padding on the login page / confirm screen — **only the
+  top inset**, per explicit owner feedback the same day ("no hace falta
+  safe area abajo solo arriba"); `nav-bar.tsx` intentionally has no
+  bottom safe-area padding. Any new fixed/full-bleed element added later
+  needs the same top-only treatment — it's not automatic.
+- **Extra/missing blank space at the bottom of the screen on first load,
+  standalone-installed only (2026-07-23, found across two follow-up
+  rounds)**: `(app)/layout.tsx`'s wrapper, the login page's `<main>`, and
+  the confirm screen's `<main>` used `min-h-dvh` for full-screen height.
+  First symptom: a gap below the nav bar on first paint that permanently
+  disappeared after one scroll — a known WebKit bug where `dvh` computes
+  taller than the real viewport on first paint in standalone mode and
+  only corrects on the next reflow. Tried `min-h-svh` instead — this
+  flipped the bug the other way (permanently *short*, not temporary),
+  because these wrappers are already nested inside a flex chain that
+  fills the screen correctly via plain percentages, no viewport unit
+  needed at all: `(app)/template.tsx`'s `motion.div` (`flex flex-1`) →
+  `body` (`min-h-full flex flex-col`) → `html` (`h-full`). Stacking any
+  `dvh`/`svh` min-height on top of that was fighting an already-correct
+  size. **Fix that actually stuck**: drop the viewport unit entirely,
+  use `flex-1` on all three so they inherit the parent chain's already-
+  correct height. If a *new* full-screen element isn't inside this flex
+  chain (e.g. a `fixed inset-0` overlay like `preview-overlay.tsx` —
+  those are fine as-is, `inset-0` isn't viewport-unit-based), don't reach
+  for `dvh`/`svh` on it either — check whether it can just join the flex
+  chain first.
 
 General PWA UI notes worth remembering for future screens (researched,
 not yet all applied beyond the above): follow platform conventions rather
