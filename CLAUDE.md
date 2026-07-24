@@ -621,6 +621,33 @@ Two fixes made after actually looking at the app on-device:
   safe-area padding at all, confirmed correct on-device. Don't re-add it
   without the owner asking first — "look native" is not sufficient
   justification here, they specifically don't want it.
+- **Gap persisted even with `position: fixed` gone and zero safe-area
+  padding anywhere (2026-07-24)** — because it was never our CSS at all.
+  Researched and confirmed via Apple's own developer forums: this is a
+  known WebKit bug in **iOS 26** standalone PWAs where `html`/`body` at
+  `100%`/`dvh` resolve taller than the real visual viewport, as if
+  Safari's (hidden, in standalone mode) toolbar were still being
+  reserved for — see [GitHub issue #835 on we-promise/sure](https://github.com/we-promise/sure/issues/835)
+  ("inconsistent padding at the bottom on mobile (iOS 26+)") and Apple
+  forum threads on [`position: fixed` content below browser
+  controls](https://developer.apple.com/forums/thread/800798) and
+  [bottom UIToolbar not extending to the screen edge](https://developer.apple.com/forums/thread/797124).
+  Apple has already fixed this in **Safari 26.1 Beta** (not yet shipped
+  to all devices), but rather than wait, applied the standard JS
+  workaround: `src/components/viewport-height-fix.tsx` (mounted once in
+  `src/app/layout.tsx`'s `<body>`) reads `window.visualViewport.height`
+  (falling back to `window.innerHeight`) on mount and on
+  `visualViewport`'s `resize`, plus `window`'s `resize`/
+  `orientationchange`, and writes it as a `--app-height` CSS custom
+  property on `document.documentElement` — sidestepping WebKit's broken
+  layout-viewport math by measuring the real rendered viewport directly
+  instead of trusting `100%`/`dvh` to compute it correctly. `html` in
+  root `layout.tsx` uses `h-[var(--app-height)]` instead of `h-full`
+  (with a `100dvh` fallback in `globals.css` for pre-JS/SSR paint);
+  `body` is plain `h-full` since its parent now has a real pixel height.
+  This is the actual root-cause fix — don't re-chase this as a CSS/
+  flexbox problem in this codebase again if it resurfaces; check whether
+  the device has picked up Safari 26.1 first.
 
 General PWA UI notes worth remembering for future screens (researched,
 not yet all applied beyond the above): follow platform conventions rather
