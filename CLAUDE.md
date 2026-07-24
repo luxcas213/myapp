@@ -678,3 +678,30 @@ Guidelines is the relevant reference here, since iOS is the only target);
 `env(safe-area-inset-*)` belongs on every `position: fixed`/full-screen
 element, not just the ones that visibly clash today; test real layout at
 actual device viewport sizes, not just desktop-browser mobile emulation.
+
+## Perceived slowness switching tabs — 2026-07-24
+
+Owner reported tab switches (Home/Recordatorios/Notas) feel a bit slow.
+Cause: all three page components are `export const dynamic =
+"force-dynamic"` Server Components hitting Postgres on every navigation
+(required — see the `force-dynamic` gotcha earlier in this doc), and
+none had a `loading.tsx`. Without one, Next.js has no Suspense boundary
+to stream around, so a tab tap shows **nothing** until the full
+server round-trip (auth check + Prisma query against Neon) completes,
+then `(app)/template.tsx`'s 200ms fade+slide entrance animation plays
+on top — all of that network+DB latency reads as a single frozen beat
+before anything moves.
+
+**Fix**: added `loading.tsx` to `(app)/` (Home), `(app)/recordatorios/`,
+and `(app)/notas/`, each a static skeleton roughly matching that page's
+layout (header + shaped `Skeleton` blocks from the already-present-but-
+unused shadcn `skeleton.tsx` primitive). This gives Next.js a Suspense
+boundary per route segment, so a tab tap shows instant skeleton
+feedback while the server fetch is still in flight, instead of a blank
+frozen screen — doesn't reduce actual DB/network latency, but removes
+the "did my tap even register?" dead air that was the main source of
+the sluggish feeling. Didn't touch the Prisma/pg pool setup itself
+(`src/lib/prisma.ts`, TCP via `@prisma/adapter-pg`) or the template
+animation duration — the skeleton is the higher-leverage, lower-risk
+fix; revisit connection latency separately if this alone doesn't feel
+fast enough on-device.
