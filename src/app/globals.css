@@ -117,14 +117,6 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-:root {
-  /* Overwritten in JS (see viewport-height-fix.tsx) with the real
-     visualViewport height, to work around an iOS 26 WebKit bug where
-     100%/dvh resolve taller than the actual visible viewport in
-     standalone PWA mode. 100dvh is just the pre-JS/SSR fallback. */
-  --app-height: 100dvh;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;

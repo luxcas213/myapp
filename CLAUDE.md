@@ -633,21 +633,27 @@ Two fixes made after actually looking at the app on-device:
   controls](https://developer.apple.com/forums/thread/800798) and
   [bottom UIToolbar not extending to the screen edge](https://developer.apple.com/forums/thread/797124).
   Apple has already fixed this in **Safari 26.1 Beta** (not yet shipped
-  to all devices), but rather than wait, applied the standard JS
-  workaround: `src/components/viewport-height-fix.tsx` (mounted once in
-  `src/app/layout.tsx`'s `<body>`) reads `window.visualViewport.height`
-  (falling back to `window.innerHeight`) on mount and on
-  `visualViewport`'s `resize`, plus `window`'s `resize`/
-  `orientationchange`, and writes it as a `--app-height` CSS custom
-  property on `document.documentElement` — sidestepping WebKit's broken
-  layout-viewport math by measuring the real rendered viewport directly
-  instead of trusting `100%`/`dvh` to compute it correctly. `html` in
-  root `layout.tsx` uses `h-[var(--app-height)]` instead of `h-full`
-  (with a `100dvh` fallback in `globals.css` for pre-JS/SSR paint);
-  `body` is plain `h-full` since its parent now has a real pixel height.
-  This is the actual root-cause fix — don't re-chase this as a CSS/
-  flexbox problem in this codebase again if it resurfaces; check whether
-  the device has picked up Safari 26.1 first.
+  to all devices), but rather than wait, applied a JS workaround —
+  **on the second attempt**. First attempt reintroduced a `--app-height`
+  CSS var with a `100dvh` SSR/pre-JS fallback consumed via `h-[var(--
+  app-height)]` on `<html>`, which regressed the app back to exactly the
+  bug `5838ead` had already fixed (a viewport-unit height computing
+  wrong before first paint) — caught by the owner reporting it broke
+  again and pointing at git history to compare. **Corrected fix**:
+  `src/components/viewport-height-fix.tsx` (mounted once in
+  `src/app/layout.tsx`'s `<body>`) does not touch the default CSS at
+  all — `<html>`/`<body>` stay on the plain `h-full`/`min-h-full` flex
+  chain that already renders correctly. Once mounted, it reads
+  `window.visualViewport.height` and writes it as an **inline pixel
+  height directly on `document.documentElement.style.height`** (updated
+  on `visualViewport`'s `resize` and `orientationchange`) — a
+  post-mount enhancement layered on top of the working baseline, never
+  a replacement for it, so there's no pre-JS fallback value that can
+  regress anything. This is the actual root-cause fix — don't re-chase
+  this as a CSS/flexbox problem in this codebase again if it resurfaces,
+  and don't reintroduce any `dvh`/`svh`/`vh` unit (even just as a
+  fallback) on `html`/`body` — check whether the device has picked up
+  Safari 26.1 first.
 
 General PWA UI notes worth remembering for future screens (researched,
 not yet all applied beyond the above): follow platform conventions rather
