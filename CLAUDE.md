@@ -649,11 +649,27 @@ Two fixes made after actually looking at the app on-device:
   on `visualViewport`'s `resize` and `orientationchange`) — a
   post-mount enhancement layered on top of the working baseline, never
   a replacement for it, so there's no pre-JS fallback value that can
-  regress anything. This is the actual root-cause fix — don't re-chase
-  this as a CSS/flexbox problem in this codebase again if it resurfaces,
-  and don't reintroduce any `dvh`/`svh`/`vh` unit (even just as a
-  fallback) on `html`/`body` — check whether the device has picked up
-  Safari 26.1 first.
+  regress anything. Don't re-chase this as a CSS/flexbox problem in
+  this codebase again if it resurfaces, and don't reintroduce any
+  `dvh`/`svh`/`vh` unit (even just as a fallback) on `html`/`body` —
+  check whether the device has picked up Safari 26.1 first.
+- **But the gap still showed briefly on open, gone after one swipe
+  (2026-07-24, third round)** — because `visualViewport.height` itself
+  misreports on first launch, same as the underlying WebKit bug: it
+  only becomes accurate once WebKit recalculates internally, which
+  normally only happens after an actual scroll/touch gesture (exactly
+  matching "gap on open, disappears after I swipe once, never comes
+  back"). Reading a wrong-but-consistent value at mount and writing it
+  to `documentElement.style.height` just froze in the bug instead of
+  fixing it. **Fix**: `viewport-height-fix.tsx` now also nudges the
+  scroll position programmatically on mount (`scrollTo(0, 1)` then
+  `scrollTo(0, 0)` across two animation frames, re-measuring after)
+  to force WebKit's recalculation itself instead of waiting for the
+  user's gesture, and keeps `scroll`/`touchmove` listeners (capture
+  phase) as a fallback in case the synthetic nudge doesn't trigger the
+  recalculation on some iOS version/device. Not yet device-verified —
+  same sandbox limitation as everything else in this section (can't
+  reach the live authenticated app from the cloud session).
 
 General PWA UI notes worth remembering for future screens (researched,
 not yet all applied beyond the above): follow platform conventions rather

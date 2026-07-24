@@ -10,10 +10,17 @@ import { useEffect } from "react";
  * `min-h-full` flex chain that already renders correctly (see
  * 5838ead: reintroducing a viewport-unit-based height, even just as a
  * pre-JS fallback, reproduces the exact first-paint bug that commit
- * removed). Instead, once mounted, this measures the real
- * `visualViewport.height` and writes it as an inline pixel height
- * directly on `documentElement` — an enhancement layered on top of the
- * working baseline, never a replacement for it.
+ * removed).
+ *
+ * `visualViewport.height` itself misreports on first launch — it only
+ * becomes accurate once WebKit recalculates internally, which normally
+ * only happens after an actual scroll/touch gesture (matches the
+ * reported "gap on open, gone after one swipe" symptom). So on mount
+ * this nudges the scroll position programmatically to force that same
+ * recalculation without waiting for the user, re-measures on the next
+ * frame, and also keeps listening for a real gesture (scroll/touchmove)
+ * as a fallback in case the programmatic nudge doesn't trigger it on a
+ * given device/iOS version.
  */
 export function ViewportHeightFix() {
   useEffect(() => {
@@ -24,12 +31,23 @@ export function ViewportHeightFix() {
     };
 
     setHeight();
+
+    window.scrollTo(0, 1);
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      requestAnimationFrame(setHeight);
+    });
+
     window.visualViewport?.addEventListener("resize", setHeight);
     window.addEventListener("orientationchange", setHeight);
+    document.addEventListener("scroll", setHeight, { passive: true, capture: true });
+    document.addEventListener("touchmove", setHeight, { passive: true, capture: true });
 
     return () => {
       window.visualViewport?.removeEventListener("resize", setHeight);
       window.removeEventListener("orientationchange", setHeight);
+      document.removeEventListener("scroll", setHeight, true);
+      document.removeEventListener("touchmove", setHeight, true);
     };
   }, []);
 
